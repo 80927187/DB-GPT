@@ -1,4 +1,4 @@
-"""Base agent class for conversable agents."""
+"""可对话智能体的基础智能体类。"""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class ConversableAgent(Role, Agent):
-    """ConversableAgent is an agent that can communicate with other agents."""
+    """ConversableAgent 是可与其他智能体通信的智能体。"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -55,7 +55,7 @@ class ConversableAgent(Role, Agent):
     # 确认当前Agent是否需要进行参考资源展示
     show_reference: bool = False
 
-    # Multi-layer context management (initialized via enable_context_management())
+    # 多层上下文管理（通过 enable_context_management() 初始化）
     _context_manager: Optional[ContextManager] = None
 
     executor: Executor = Field(
@@ -64,7 +64,7 @@ class ConversableAgent(Role, Agent):
     )
 
     def __init__(self, **kwargs):
-        """Create a new agent."""
+        """创建一个新智能体。"""
         Role.__init__(self, **kwargs)
         Agent.__init__(self)
 
@@ -74,15 +74,15 @@ class ConversableAgent(Role, Agent):
         model_name: Optional[str] = None,
         on_status_event: Optional[ContextStatusCallback] = None,
     ) -> None:
-        """Initialize multi-layer context management.
+        """初始化多层上下文管理。
 
-        Call this after the agent is fully configured (llm_client set, etc.).
+        请在智能体完成全部配置（如已设置 llm_client）后调用此方法。
 
-        Args:
-            config: Budget configuration. If None, derived from agent_context.
-            model_name: Model name for tokenizer selection.
-            on_status_event: Async callback invoked with context status dicts
-                so the caller (e.g. SSE layer) can push live updates.
+        参数：
+            config: 预算配置。若为 None，则从 agent_context 派生。
+            model_name: 用于选择分词器的模型名称。
+            on_status_event: 使用上下文状态字典调用的异步回调，
+                以便调用方（如 SSE 层）推送实时更新。
         """
         if config is None:
             ctx = self.agent_context
@@ -105,19 +105,19 @@ class ConversableAgent(Role, Agent):
                 on_status_event=on_status_event,
             ),
         )
-        # Initialize ToolResultStorage for Layer 2 (per-result persistence).
-        # Storage dir: {output_dir}/persisted_results/{conv_id}/, sibling of
-        # op_snapshots/. Falls back to DBGPT_HOME/workspace/persisted_results/.
+        # 为第 2 层初始化 ToolResultStorage（逐结果持久化）。
+        # 存储目录：{output_dir}/persisted_results/{conv_id}/，与 op_snapshots/
+        # 同级。无法使用时回退到 DBGPT_HOME/workspace/persisted_results/。
         self._init_tool_result_storage(config)
         logger.info("Context management enabled for agent %s", self.name)
 
     def _init_tool_result_storage(self, config: ContextBudgetConfig) -> None:
-        """Initialize the ToolResultStorage bound to this agent's conversation.
+        """初始化绑定到当前智能体会话的 ToolResultStorage。
 
-        Resolves the storage directory from ``AgentContext.output_dir`` (or
-        ``DBGPT_HOME/workspace``) and binds it to the current async context
-        via ``set_current_storage`` so the standalone ``run_tool`` function
-        can pick it up without a signature change.
+        从 ``AgentContext.output_dir``（或 ``DBGPT_HOME/workspace``）
+        解析存储目录，并通过 ``set_current_storage`` 将其绑定到
+        当前异步上下文，使独立的 ``run_tool`` 函数无需更改签名
+        即可获取该存储。
         """
         import os
 
@@ -144,19 +144,19 @@ class ConversableAgent(Role, Agent):
         object.__setattr__(self, "_result_storage", storage)
 
     def check_available(self) -> None:
-        """Check if the agent is available.
+        """检查智能体是否可用。
 
-        Raises:
-            ValueError: If the agent is not available.
+        异常：
+            ValueError: 智能体不可用时抛出。
         """
         self.identity_check()
-        # check run context
+        # 检查运行上下文
         if self.agent_context is None:
             raise ValueError(
                 f"{self.name}[{self.role}] Missing context in which agent is running!"
             )
 
-        # action check
+        # 检查动作
         if self.actions and len(self.actions) > 0:
             for action in self.actions:
                 if action.resource_need and (
@@ -172,7 +172,7 @@ class ConversableAgent(Role, Agent):
                 raise ValueError(
                     f"This agent {self.name}[{self.role}] is missing action modules."
                 )
-        # llm check
+        # 检查 LLM
         if not self.is_human and (
             self.llm_config is None or self.llm_config.llm_client is None
         ):
@@ -183,13 +183,13 @@ class ConversableAgent(Role, Agent):
 
     @property
     def not_null_agent_context(self) -> AgentContext:
-        """Get the agent context.
+        """获取智能体上下文。
 
-        Returns:
-            AgentContext: The agent context.
+        返回：
+            AgentContext: 智能体上下文。
 
-        Raises:
-            ValueError: If the agent context is not initialized.
+        异常：
+            ValueError: 智能体上下文未初始化时抛出。
         """
         if not self.agent_context:
             raise ValueError("Agent context is not initialized！")
@@ -197,14 +197,14 @@ class ConversableAgent(Role, Agent):
 
     @property
     def not_null_llm_config(self) -> LLMConfig:
-        """Get the LLM config."""
+        """获取 LLM 配置。"""
         if not self.llm_config:
             raise ValueError("LLM config is not initialized！")
         return self.llm_config
 
     @property
     def not_null_llm_client(self) -> LLMClient:
-        """Get the LLM client."""
+        """获取 LLM 客户端。"""
         llm_client = self.not_null_llm_config.llm_client
         if not llm_client:
             raise ValueError("LLM client is not initialized！")
@@ -213,31 +213,31 @@ class ConversableAgent(Role, Agent):
     async def blocking_func_to_async(
         self, func: Callable[..., Any], *args, **kwargs
     ) -> Any:
-        """Run a potentially blocking function within an executor."""
+        """在执行器中运行可能阻塞的函数。"""
         if not asyncio.iscoroutinefunction(func):
             return await blocking_func_to_async(self.executor, func, *args, **kwargs)
         return await func(*args, **kwargs)
 
     async def preload_resource(self) -> None:
-        """Preload resources before agent initialization."""
+        """在初始化智能体前预加载资源。"""
         if self.resource:
             await self.resource.preload_resource()
 
     async def build(self, is_retry_chat: bool = False) -> "ConversableAgent":
-        """Build the agent."""
-        # Preload resources
+        """构建智能体。"""
+        # 预加载资源
         await self.preload_resource()
-        # Check if agent is available
+        # 检查智能体是否可用
         self.check_available()
         _language = self.not_null_agent_context.language
         if _language:
             self.language = _language
 
-        # Initialize resource loader
+        # 初始化资源加载器
         for action in self.actions:
             action.init_resource(self.resource)
 
-        # Initialize LLM Server
+        # 初始化 LLM 服务
         if not self.is_human:
             if not self.llm_config or not self.llm_config.llm_client:
                 raise ValueError("LLM client is not initialized！")
@@ -251,7 +251,7 @@ class ConversableAgent(Role, Agent):
                 insight_extractor=self.memory_insight_extractor,
                 session_id=memory_session,
             )
-            # Clone the memory structure
+            # 克隆记忆结构
             self.memory = self.memory.structure_clone()
             action_outputs = await self.memory.gpts_memory.get_agent_history_memory(
                 real_conv_id, self.role
@@ -260,18 +260,18 @@ class ConversableAgent(Role, Agent):
         return self
 
     def bind(self, target: Any) -> "ConversableAgent":
-        """Bind the resources to the agent."""
-        # Support binding Skill instances so agents can receive skills via .bind(skill)
-        # Allow binding of FileBasedSkill (Claude-style) by converting it to a
-        # core Skill instance. This lets callers pass either a core Skill or a
-        # file-based skill parser result.
+        """将资源绑定到智能体。"""
+        # 支持绑定 Skill 实例，使智能体可通过 .bind(skill) 接收技能
+        # 支持绑定 FileBasedSkill（Claude 风格）：将其转换为
+        # 核心 Skill 实例。这样调用方既可传入核心 Skill，
+        # 也可传入基于文件的技能解析结果。
         try:
             from dbgpt.agent.claude_skill import FileBasedSkill
         except Exception:
             FileBasedSkill = None  # type: ignore
 
-        # If a FileBasedSkill instance was provided, try to convert it into
-        # a core Skill so downstream code can treat skills uniformly.
+        # 如果传入了 FileBasedSkill 实例，尝试将其转换为核心 Skill，
+        # 以便下游代码统一处理技能。
         if FileBasedSkill is not None and isinstance(target, FileBasedSkill):
             try:
                 from dbgpt.agent.skill.base import Skill, SkillMetadata, SkillType
@@ -310,14 +310,14 @@ class ConversableAgent(Role, Agent):
                     config=getattr(meta, "config", {}) or {},
                 )
 
-                # replace target with the constructed core Skill instance
+                # 用构建出的核心 Skill 实例替换 target
                 target = skill_obj
             except Exception:
-                # if conversion fails, continue and let subsequent checks handle it
+                # 转换失败时继续执行，交由后续检查处理
                 pass
 
         try:
-            # local import to avoid circular imports at module import time
+            # 局部导入，避免模块导入时出现循环依赖
             from dbgpt.agent.skill.base import SkillBase
 
             is_skill = isinstance(target, SkillBase)
@@ -336,8 +336,8 @@ class ConversableAgent(Role, Agent):
         elif isinstance(target, ProfileConfig):
             self.profile = target
         elif is_skill:
-            # Bind skill to agent and adopt skill's prompt template as bind_prompt
-            # so the skill's instructions become the agent's system prompt.
+            # 将技能绑定到智能体，并将其提示模板设为 bind_prompt，
+            # 使技能指令成为智能体的系统提示词。
             self._skill = target
             try:
                 prompt_template = getattr(target, "prompt_template", None)
@@ -376,7 +376,7 @@ class ConversableAgent(Role, Agent):
         rely_messages: Optional[List[AgentMessage]] = None,
         historical_dialogues: Optional[List[AgentMessage]] = None,
     ) -> None:
-        """Send a message to recipient agent."""
+        """向接收方智能体发送消息。"""
         with root_tracer.start_span(
             "agent.send",
             metadata={
@@ -415,7 +415,7 @@ class ConversableAgent(Role, Agent):
         historical_dialogues: Optional[List[AgentMessage]] = None,
         rely_messages: Optional[List[AgentMessage]] = None,
     ) -> None:
-        """Receive a message from another agent."""
+        """接收其他智能体发送的消息。"""
         with root_tracer.start_span(
             "agent.receive",
             metadata={
@@ -465,7 +465,7 @@ class ConversableAgent(Role, Agent):
         rely_messages: Optional[List[AgentMessage]] = None,
         **kwargs,
     ) -> Dict[str, Any]:
-        """Prepare the parameters for the act method."""
+        """为 act 方法准备参数。"""
         return {}
 
     @final
@@ -480,7 +480,7 @@ class ConversableAgent(Role, Agent):
         last_speaker_name: Optional[str] = None,
         **kwargs,
     ) -> AgentMessage:
-        """Generate a reply based on the received messages."""
+        """根据收到的消息生成回复。"""
         stream_callback = kwargs.pop("stream_callback", None)
 
         async def _emit_stream(event_type: str, payload: Dict[str, Any]) -> None:
@@ -518,7 +518,7 @@ class ConversableAgent(Role, Agent):
             with root_tracer.start_span(
                 "agent.generate_reply._init_reply_message",
             ) as span:
-                # initialize reply message
+                # 初始化回复消息
                 a_reply_message: Optional[
                     AgentMessage
                 ] = await self._a_init_reply_message(received_message=received_message)
@@ -556,16 +556,16 @@ class ConversableAgent(Role, Agent):
                     retry_message.content = fail_reason or observation
                     retry_message.current_goal = received_message.current_goal
 
-                    # The current message is a self-optimized message that needs to be
-                    # recorded.
-                    # It is temporarily set to be initiated by the originating end to
-                    # facilitate the organization of historical memory context.
+                    # 当前消息是自我优化消息，
+                    # 需要将其记录下来。
+                    # 暂时将其设为由发起端发起，
+                    # 以便组织历史记忆上下文。
                     await sender.send(
                         retry_message, self, reviewer, request_reply=False
                     )
                     reply_message.rounds = retry_message.rounds + 1
 
-                # In manual retry mode, load all messages of the last speaker as dependent messages # noqa
+                # 手动重试模式下，将上一位发言者的全部消息加载为依赖消息 # noqa
                 logger.info(
                     f"Depends on the number of historical messages:{len(rely_messages) if rely_messages else 0}！"  # noqa
                 )
@@ -588,7 +588,7 @@ class ConversableAgent(Role, Agent):
                         )
                     },
                 ) as span:
-                    # 1.Think about how to do things
+                    # 1. 思考任务的处理方式
                     async def _llm_stream_callback(payload: Dict[str, Any]) -> None:
                         await _emit_stream(
                             "thinking_chunk",
@@ -606,7 +606,7 @@ class ConversableAgent(Role, Agent):
                             stream_callback=_llm_stream_callback,
                         )
                     except LLMChatError as e:
-                        # Layer 4: reactive compaction on context_too_long
+                        # 第 4 层：出现 context_too_long 时进行响应式压缩
                         _ctx_mgr: Optional[ContextManager] = getattr(
                             self, "_context_manager", None
                         )
@@ -648,7 +648,7 @@ class ConversableAgent(Role, Agent):
                     "agent.generate_reply.review",
                     metadata={"llm_reply": llm_reply, "censored": self.name},
                 ) as span:
-                    # 2.Review whether what is being done is legal
+                    # 2. 审查当前操作是否合法
                     approve, comments = await self.review(llm_reply, self)
                     reply_message.review_info = AgentReviewInfo(
                         approve=approve,
@@ -672,7 +672,7 @@ class ConversableAgent(Role, Agent):
                         "act_extent_param": act_extent_param,
                     },
                 ) as span:
-                    # 3.Act based on the results of your thinking
+                    # 3. 根据思考结果执行动作
                     act_out: ActionOutput = await self.act(
                         message=reply_message,
                         sender=sender,
@@ -702,7 +702,7 @@ class ConversableAgent(Role, Agent):
                         "reviewer": reviewer.name if reviewer else None,
                     },
                 ) as span:
-                    # 4.Reply information verification
+                    # 4. 验证回复信息
                     check_pass, reason = await self.verify(
                         reply_message, sender, reviewer
                     )
@@ -712,7 +712,7 @@ class ConversableAgent(Role, Agent):
 
                 question: str = received_message.content or ""
                 ai_message: str = llm_reply or ""
-                # 5.Optimize wrong answers myself
+                # 5. 自我优化错误答案
                 if not check_pass:
                     if not act_out.have_retry:
                         logger.warning("No retry available!")
@@ -728,7 +728,7 @@ class ConversableAgent(Role, Agent):
                         current_retry_counter=current_retry_counter,
                     )
                 else:
-                    # Successful reply
+                    # 回复成功
                     observation = act_out.observations
                     await self.write_memories(
                         question=question,
@@ -748,16 +748,16 @@ class ConversableAgent(Role, Agent):
                     )
                     break
 
-                # Continue to run the next round
+                # 继续运行下一轮
                 current_retry_counter += 1
-                # Send error messages and issue new problem-solving instructions
+                # 发送错误消息并下达新的问题解决指令
                 if current_retry_counter < self.max_retry_count:
                     await self.send(
                         reply_message, sender, reviewer, request_reply=False
                     )
 
             reply_message.success = is_success
-            # 6.final message adjustment
+            # 6. 调整最终消息
             await self.adjust_final_message(is_success, reply_message)
             return reply_message
 
@@ -778,18 +778,18 @@ class ConversableAgent(Role, Agent):
         prompt: Optional[str] = None,
         stream_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
     ) -> Tuple[Optional[str], Optional[str]]:
-        """Think and reason about the current task goal.
+        """针对当前任务目标进行思考和推理。
 
-        Args:
-            messages(List[AgentMessage]): the messages to be reasoned
-            prompt(str): the prompt to be reasoned
+        参数：
+            messages(List[AgentMessage]): 待推理的消息
+            prompt(str): 待推理的提示词
         """
         last_model = None
         last_err = None
         retry_count = 0
         llm_messages = [message.to_llm_message() for message in messages]
-        # LLM inference automatically retries 3 times to reduce interruption
-        # probability caused by speed limit and network stability
+        # LLM 推理自动重试 3 次，以降低限速和网络不稳定
+        # 导致的中断概率
         while retry_count < 3:
             llm_model = await self._a_select_llm_model(last_model)
             try:
@@ -825,7 +825,7 @@ class ConversableAgent(Role, Agent):
             raise ValueError("LLM model inference failed!")
 
     async def review(self, message: Optional[str], censored: Agent) -> Tuple[bool, Any]:
-        """Review the message based on the censored message."""
+        """根据待审查对象审查消息。"""
         return True, None
 
     async def act(
@@ -837,10 +837,10 @@ class ConversableAgent(Role, Agent):
         last_speaker_name: Optional[str] = None,
         **kwargs,
     ) -> ActionOutput:
-        """Perform actions."""
-        # Bind this agent's ToolResultStorage to the current async context so
-        # the standalone run_tool() can access it for oversized-result
-        # persistence. The token is reset to its previous value after act().
+        """执行动作。"""
+        # 将当前智能体的 ToolResultStorage 绑定到当前异步上下文，
+        # 使独立的 run_tool() 可访问它并持久化超大结果。
+        # act() 执行完成后，将令牌重置为先前的值。
         from .context.storage import get_current_storage, set_current_storage
 
         prev_storage = get_current_storage()
@@ -886,13 +886,13 @@ class ConversableAgent(Role, Agent):
                 raise ValueError("Action should return value！")
             return last_out
         finally:
-            # Restore the previous storage binding (supports nested agent calls).
+            # 恢复先前的存储绑定（支持嵌套的智能体调用）。
             set_current_storage(prev_storage)
 
     async def correctness_check(
         self, message: AgentMessage
     ) -> Tuple[bool, Optional[str]]:
-        """Verify the correctness of the results."""
+        """验证结果的正确性。"""
         return True, None
 
     async def verify(
@@ -902,12 +902,12 @@ class ConversableAgent(Role, Agent):
         reviewer: Optional[Agent] = None,
         **kwargs,
     ) -> Tuple[bool, Optional[str]]:
-        """Verify the current execution results."""
-        # Check approval results
+        """验证当前执行结果。"""
+        # 检查审批结果
         if message.review_info and not message.review_info.approve:
             return False, message.review_info.comments
 
-        # Check action run results
+        # 检查动作运行结果
         action_output: Optional[ActionOutput] = message.action_report
         if action_output:
             if not action_output.is_exe_success:
@@ -919,7 +919,7 @@ class ConversableAgent(Role, Agent):
                     "question and background and generate a new answer.. ",
                 )
 
-        # agent output correctness check
+        # 检查智能体输出的正确性
         return await self.correctness_check(message)
 
     async def initiate_chat(
@@ -935,12 +935,12 @@ class ConversableAgent(Role, Agent):
         rely_messages: Optional[List[AgentMessage]] = None,
         **context,
     ):
-        """Initiate a chat with another agent.
+        """发起与另一个智能体的对话。
 
-        Args:
-            recipient (Agent): The recipient agent.
-            reviewer (Agent): The reviewer agent.
-            message (str): The message to send.
+        参数：
+            recipient (Agent): 接收方智能体。
+            reviewer (Agent): 审查方智能体。
+            message (str): 要发送的消息。
         """
         agent_message = AgentMessage(
             content=message,
@@ -977,11 +977,11 @@ class ConversableAgent(Role, Agent):
         is_success: bool,
         reply_message: AgentMessage,
     ):
-        """Adjust final message after agent reply."""
+        """在智能体回复后调整最终消息。"""
         return is_success, reply_message
 
     #######################################################################
-    # Private Function Begin
+    # 私有函数开始
     #######################################################################
 
     def _init_actions(self, actions: List[Type[Action]]):
@@ -1046,7 +1046,7 @@ class ConversableAgent(Role, Agent):
             return True
 
     def _print_received_message(self, message: AgentMessage, sender: Agent):
-        # print the message received
+        # 打印收到的消息
         print("\n", "-" * 80, flush=True, sep="")
         _print_name = self.name if self.name else self.role
         print(
@@ -1096,7 +1096,7 @@ class ConversableAgent(Role, Agent):
         self._print_received_message(message, sender)
 
     async def load_resource(self, question: str, is_retry_chat: bool = False):
-        """Load agent bind resource."""
+        """加载智能体绑定的资源。"""
         if self.resource:
             resource_prompt, resource_reference = await self.resource.get_prompt(
                 lang=self.language, question=question
@@ -1107,7 +1107,7 @@ class ConversableAgent(Role, Agent):
     async def generate_resource_variables(
         self, resource_prompt: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Generate the resource variables."""
+        """生成资源变量。"""
         out_schema: Optional[str] = ""
         if self.actions and len(self.actions) > 0:
             out_schema = self.actions[0].ai_out_schema
@@ -1149,15 +1149,15 @@ class ConversableAgent(Role, Agent):
         gpts_messages: List[GptsMessage],
         is_rery_chat: bool = False,
     ) -> Optional[List[AgentMessage]]:
-        """Convert gptmessage to agent message."""
+        """将 GPT 消息转换为智能体消息。"""
         oai_messages: List[AgentMessage] = []
-        # Based on the current agent, all messages received are user, and all messages
-        # sent are assistant.
+        # 以当前智能体为基准，所有收到的消息均为用户消息，
+        # 所有发出的消息均为助手消息。
         if not gpts_messages:
             return None
         for item in gpts_messages:
-            # Message conversion, priority is given to converting execution results,
-            # and only model output results will be used if not.
+            # 转换消息时优先转换执行结果，
+            # 否则仅使用模型输出结果。
             content = item.content
             oai_messages.append(
                 AgentMessage(
@@ -1185,7 +1185,7 @@ class ConversableAgent(Role, Agent):
         try:
             all_models = await self.not_null_llm_client.models()
             all_model_names = [item.model for item in all_models]
-            # TODO Currently only two strategies, priority and default, are implemented.
+            # TODO 当前仅实现优先级和默认这两种策略。
             if self.not_null_llm_config.llm_strategy == LLMStrategyType.Priority:
                 priority: List[str] = []
                 strategy_context = self.not_null_llm_config.strategy_context
@@ -1209,15 +1209,15 @@ class ConversableAgent(Role, Agent):
         received_message: AgentMessage,
         rely_messages: Optional[List[AgentMessage]] = None,
     ) -> AgentMessage:
-        """Create a new message from the received message.
+        """根据收到的消息创建一条新消息。
 
-        Initialize a new message from the received message
+        根据收到的消息初始化一条新消息。
 
-        Args:
-            received_message(AgentMessage): The received message
+        参数：
+            received_message(AgentMessage): 收到的消息
 
-        Returns:
-            AgentMessage: A new message
+        返回：
+            AgentMessage: 新消息
         """
         return AgentMessage(
             content=received_message.content,
@@ -1231,9 +1231,9 @@ class ConversableAgent(Role, Agent):
         received_message: AgentMessage,
         rely_messages: Optional[List[AgentMessage]] = None,
     ) -> Optional[AgentMessage]:
-        """Create a new message from the received message.
+        """根据收到的消息创建一条新消息。
 
-        If return not None, the `_init_reply_message` method will not be called.
+        如果返回值不为 None，则不会调用 `_init_reply_message` 方法。
         """
         return None
 
@@ -1243,8 +1243,8 @@ class ConversableAgent(Role, Agent):
         is_rery_chat: bool = False,
     ) -> List[AgentMessage]:
         oai_messages: List[AgentMessage] = []
-        # Based on the current agent, all messages received are user, and all messages
-        # sent are assistant.
+        # 以当前智能体为基准，所有收到的消息均为用户消息，
+        # 所有发出的消息均为助手消息。
         for item in gpts_messages:
             if item.role:
                 role = item.role
@@ -1256,8 +1256,8 @@ class ConversableAgent(Role, Agent):
                 else:
                     continue
 
-            # Message conversion, priority is given to converting execution results,
-            # and only model output results will be used if not.
+            # 转换消息时优先转换执行结果，
+            # 否则仅使用模型输出结果。
             content = item.content
             if item.action_report:
                 action_out = ActionOutput.from_dict(json.loads(item.action_report))
@@ -1290,7 +1290,7 @@ class ConversableAgent(Role, Agent):
         context: Optional[Dict[str, Any]] = None,
         is_retry_chat: bool = False,
     ):
-        """Build system prompt."""
+        """构建系统提示词。"""
         system_prompt = None
         if self.bind_prompt:
 
@@ -1306,9 +1306,9 @@ class ConversableAgent(Role, Agent):
             if self.bind_prompt.template_format == "f-string":
                 system_prompt = self.bind_prompt.format(**prompt_param)
             elif self.bind_prompt.template_format == "jinja2":
-                # Render in a sandbox: bind_prompt.template may contain
-                # user-controlled content (e.g. a selected skill's instructions),
-                # so a plain jinja2.Template would allow SSTI -> RCE.
+                # 在沙箱中渲染：bind_prompt.template 可能包含用户可控内容
+                # （如所选技能的指令），直接使用 jinja2.Template 会导致
+                # SSTI，进而引发 RCE。
                 _env = SandboxedEnvironment()
                 system_prompt = _env.from_string(self.bind_prompt.template).render(
                     prompt_param
@@ -1344,7 +1344,7 @@ class ConversableAgent(Role, Agent):
             raise ValueError("The received message content is empty!")
         most_recent_memories = ""
         memory_list = []
-        # Read the memories according to the current observation
+        # 根据当前观察读取记忆
         memories = await self.read_memories(observation)
         if isinstance(memories, list):
             memory_list = memories
@@ -1354,23 +1354,23 @@ class ConversableAgent(Role, Agent):
         reply_message_str = ""
         if context is None:
             context = {}
-        # Inject task progress summary so the LLM always knows what has been done
-        # regardless of how many memory fragments have been evicted from the buffer.
+        # 注入任务进度摘要，使 LLM 始终了解已完成的工作，
+        # 不受缓冲区中被逐出的记忆片段数量影响。
         task_progress = self.task_progress_summary
         if task_progress:
             context["task_progress"] = task_progress
         if rely_messages:
             copied_rely_messages = [m.copy() for m in rely_messages]
-            # When directly relying on historical messages, use the execution result
-            # content as a dependency
+            # 直接依赖历史消息时，将执行结果
+            # 内容作为依赖
             for message in copied_rely_messages:
                 action_report: Optional[ActionOutput] = message.action_report
                 if action_report:
-                    # TODO: Modify in-place, need to be optimized
+                    # TODO：此处为原地修改，需要优化
                     message.content = action_report.content
                 if message.name != self.role:
-                    # TODO, use name
-                    # Rely messages are not from the current agent
+                    # TODO：使用名称
+                    # 依赖消息并非来自当前智能体
                     if message.role == ModelMessageRoleType.HUMAN:
                         reply_message_str += f"Question: {message.content}\n"
                     elif message.role == ModelMessageRoleType.AI:
@@ -1378,7 +1378,7 @@ class ConversableAgent(Role, Agent):
         if reply_message_str:
             most_recent_memories += "\n" + reply_message_str
         try:
-            # Load the resource prompt according to the current observation
+            # 根据当前观察加载资源提示词
             resource_prompt_str, resource_references = await self.load_resource(
                 observation, is_retry_chat=is_retry_chat
             )
@@ -1412,16 +1412,16 @@ class ConversableAgent(Role, Agent):
                 )
             )
         if historical_dialogues and not has_memories:
-            # If we can't read the memory, we need to rely on the historical dialogue
+            # 如果无法读取记忆，则需要依赖历史对话
             for i in range(len(historical_dialogues)):
                 if i % 2 == 0:
-                    # The even number starts, and the even number is the user
-                    # information
+                    # 从偶数编号开始，偶数编号为
+                    # 用户信息
                     message = historical_dialogues[i]
                     message.role = ModelMessageRoleType.HUMAN
                     agent_messages.append(message)
                 else:
-                    # The odd number is AI information
+                    # 奇数编号为 AI 信息
                     message = historical_dialogues[i]
                     message.role = ModelMessageRoleType.AI
                     agent_messages.append(message)
@@ -1429,7 +1429,7 @@ class ConversableAgent(Role, Agent):
         if memory_list:
             agent_messages.extend(memory_list)
 
-        # Multi-layer context management: compress if budget exceeded
+        # 多层上下文管理：超出预算时进行压缩
         ctx_mgr: Optional[ContextManager] = getattr(self, "_context_manager", None)
         if ctx_mgr is not None:
             agent_messages = await ctx_mgr.manage_context(
@@ -1438,10 +1438,10 @@ class ConversableAgent(Role, Agent):
                 task_progress=task_progress,
             )
 
-        # Current user input information
+        # 当前用户输入信息
         if not user_prompt and (not memory_list or not current_retry_counter):
-            # The user prompt is empty, and the current retry count is 0 or the memory
-            # is empty
+            # 用户提示词为空，且当前重试次数为 0 或
+            # 记忆为空
             user_prompt = f"Observation: {observation}"
         if user_prompt:
             agent_messages.append(
@@ -1454,7 +1454,7 @@ class ConversableAgent(Role, Agent):
 
 
 def _new_system_message(content):
-    """Return the system message."""
+    """返回系统消息。"""
     return [{"content": content, "role": ModelMessageRoleType.SYSTEM}]
 
 

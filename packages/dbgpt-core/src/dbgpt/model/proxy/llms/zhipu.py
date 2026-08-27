@@ -138,7 +138,9 @@ class ZhipuLLMClient(OpenAILLMClient):
 
     @property
     def default_model(self) -> str:
-        return _DEFAULT_MODEL
+        # The configured model is passed to ``self._model`` by ``new_client``.
+        # Keep the legacy model only as the fallback for callers that omit it.
+        return self._model or _DEFAULT_MODEL
 
 
 register_proxy_model_adapter(
