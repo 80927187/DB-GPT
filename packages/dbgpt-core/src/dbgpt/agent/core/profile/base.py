@@ -1,4 +1,4 @@
-"""Profile module."""
+"""配置（profile）模块。"""
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Set
@@ -148,58 +148,58 @@ _DEFAULT_WRITE_MEMORY_TEMPLATE_ZH = """\
 
 
 class Profile(ABC):
-    """Profile interface."""
+    """配置接口（profile interface）。"""
 
     @abstractmethod
     def get_name(self) -> str:
-        """Return the name of current agent."""
+        """返回当前智能体名称。"""
 
     @abstractmethod
     def get_role(self) -> str:
-        """Return the role of current agent."""
+        """返回当前智能体职责。"""
 
     def get_goal(self) -> Optional[str]:
-        """Return the goal of current agent."""
+        """返回当前智能体目标。"""
         return None
 
     def get_retry_goal(self) -> Optional[str]:
-        """Return the goal of current agent."""
+        """返回当前智能体的重试目标。"""
         return None
 
     def get_constraints(self) -> Optional[List[str]]:
-        """Return the constraints of current agent."""
+        """返回当前智能体约束条件。"""
         return None
 
     def get_retry_constraints(self) -> Optional[List[str]]:
-        """Return the constraints of current agent."""
+        """返回当前智能体的重试约束条件。"""
         return None
 
     def get_description(self) -> Optional[str]:
-        """Return the description of current agent.
+        """返回当前智能体描述。
 
-        It will not be used to generate prompt.
+        此描述不会用于生成提示词。
         """
         return None
 
     def get_expand_prompt(self) -> Optional[str]:
-        """Return the expand prompt of current agent."""
+        """返回当前智能体的扩展提示词。"""
         return None
 
     def get_examples(self) -> Optional[str]:
-        """Return the examples of current agent."""
+        """返回当前智能体示例。"""
         return None
 
     @abstractmethod
     def get_system_prompt_template(self) -> str:
-        """Return the prompt template of current agent."""
+        """返回当前智能体的系统提示词模板。"""
 
     @abstractmethod
     def get_user_prompt_template(self) -> str:
-        """Return the user prompt template of current agent."""
+        """返回当前智能体的用户提示词模板。"""
 
     @abstractmethod
     def get_write_memory_template(self) -> str:
-        """Return the save memory template of current agent."""
+        """返回当前智能体的记忆保存模板。"""
 
     def format_system_prompt(
         self,
@@ -211,18 +211,17 @@ class Profile(ABC):
         is_retry_chat: bool = False,
         **kwargs,
     ) -> str:
-        """Format the system prompt.
+        """格式化系统提示词。
 
         Args:
-            template_env(Optional[Environment]): The template environment for jinja2.
-            question(Optional[str]): The question.
-            language(str): The language of current context.
-            most_recent_memories(Optional[str]): The most recent memories, it reads
-                from memory.
-            resource_vars(Optional[Dict[str, Any]]): The resource variables.
+            template_env(Optional[Environment])：Jinja2 模板环境。
+            question(Optional[str])：问题。
+            language(str)：当前上下文语言。
+            most_recent_memories(Optional[str])：最近的记忆内容，从记忆中读取。
+            resource_vars(Optional[Dict[str, Any]])：资源变量。
 
         Returns:
-            str: The formatted system prompt.
+            str：格式化后的系统提示词。
         """
         return self._format_prompt(
             self.get_system_prompt_template(),
@@ -244,18 +243,17 @@ class Profile(ABC):
         resource_vars: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> str:
-        """Format the user prompt.
+        """格式化用户提示词。
 
         Args:
-            template_env(Optional[Environment]): The template environment for jinja2.
-            question(Optional[str]): The question.
-            language(str): The language of current context.
-            most_recent_memories(Optional[str]): The most recent memories, it reads
-                from memory.
-            resource_vars(Optional[Dict[str, Any]]): The resource variables.
+            template_env(Optional[Environment])：Jinja2 模板环境。
+            question(Optional[str])：问题。
+            language(str)：当前上下文语言。
+            most_recent_memories(Optional[str])：最近的记忆内容，从记忆中读取。
+            resource_vars(Optional[Dict[str, Any]])：资源变量。
 
         Returns:
-            str: The formatted user prompt.
+            str：格式化后的用户提示词。
         """
         return self._format_prompt(
             self.get_user_prompt_template(),
@@ -269,13 +267,12 @@ class Profile(ABC):
 
     @property
     def _sub_render_keys(self) -> Set[str]:
-        """Return the sub render keys.
+        """返回子渲染（sub-render）键。
 
-        If the value is a string and the key is in the sub render keys, it will be
-            rendered.
+        如果值为字符串且键属于子渲染键，则会对其进行渲染。
 
         Returns:
-            Set[str]: The sub render keys.
+            Set[str]：子渲染键。
         """
         return {"role", "name", "goal", "expand_prompt", "constraints"}
 
@@ -290,7 +287,7 @@ class Profile(ABC):
         is_retry_chat: bool = False,
         **kwargs,
     ) -> str:
-        """Format the prompt."""
+        """格式化提示词。"""
         if not template_env:
             template_env = SandboxedEnvironment()
         pass_vars = {
@@ -310,14 +307,14 @@ class Profile(ABC):
             "question": question,
         }
         if resource_vars:
-            # Merge resource variables
+            # 合并资源变量。
             pass_vars.update(resource_vars)
         pass_vars.update(kwargs)
 
-        # Parse the template to find all variables in the template
+        # 解析模板，查找模板中的所有变量。
         template_vars = find_undeclared_variables(template_env.parse(template))
 
-        # Just keep the valid template key variables
+        # 仅保留有效的模板键变量。
         filtered_data = {
             key: pass_vars[key] for key in template_vars if key in pass_vars
         }
@@ -330,7 +327,7 @@ class Profile(ABC):
             value = filtered_data[key]
             if key in self._sub_render_keys and value:
                 if isinstance(value, str):
-                    # Render the sub-template
+                    # 渲染子模板。
                     filtered_data[key] = _render_template(
                         template_env, value, **pass_vars
                     )
@@ -342,7 +339,7 @@ class Profile(ABC):
 
 
 class DefaultProfile(BaseModel, Profile):
-    """Default profile."""
+    """默认配置（default profile）。"""
 
     name: str = Field("", description="The name of the agent.")
     role: str = Field("", description="The role of the agent.")
@@ -382,61 +379,61 @@ class DefaultProfile(BaseModel, Profile):
     )
 
     def get_name(self) -> str:
-        """Return the name of current agent."""
+        """返回当前智能体名称。"""
         return self.name
 
     def get_role(self) -> str:
-        """Return the role of current agent."""
+        """返回当前智能体职责。"""
         return self.role
 
     def get_goal(self) -> Optional[str]:
-        """Return the goal of current agent."""
+        """返回当前智能体目标。"""
         return self.goal
 
     def get_retry_goal(self) -> Optional[str]:
-        """Return the retry goal of current agent."""
+        """返回当前智能体的重试目标。"""
         return self.retry_goal
 
     def get_constraints(self) -> Optional[List[str]]:
-        """Return the constraints of current agent."""
+        """返回当前智能体约束条件。"""
         return self.constraints
 
     def get_retry_constraints(self) -> Optional[List[str]]:
-        """Return the retry constraints of current agent."""
+        """返回当前智能体的重试约束条件。"""
         return self.retry_constraints
 
     def get_description(self) -> Optional[str]:
-        """Return the description of current agent.
+        """返回当前智能体描述。
 
-        It will not be used to generate prompt.
+        此描述不会用于生成提示词。
         """
         return self.desc
 
     def get_expand_prompt(self) -> Optional[str]:
-        """Return the expand prompt of current agent."""
+        """返回当前智能体的扩展提示词。"""
         return self.expand_prompt
 
     def get_examples(self) -> Optional[str]:
-        """Return the examples of current agent."""
+        """返回当前智能体示例。"""
         return self.examples
 
     def get_system_prompt_template(self) -> str:
-        """Return the prompt template of current agent."""
+        """返回当前智能体的系统提示词模板。"""
         return self.system_prompt_template
 
     def get_user_prompt_template(self) -> str:
-        """Return the user prompt template of current agent."""
+        """返回当前智能体的用户提示词模板。"""
         return self.user_prompt_template
 
     def get_write_memory_template(self) -> str:
-        """Return the save memory template of current agent."""
+        """返回当前智能体的记忆保存模板。"""
         return self.write_memory_template
 
 
 class ProfileFactory:
-    """Profile factory interface.
+    """配置工厂接口（profile factory interface）。
 
-    It is used to create a profile.
+    用于创建配置。
     """
 
     @abstractmethod
@@ -449,16 +446,14 @@ class ProfileFactory:
         prefer_prompt_language: Optional[str] = None,
         prefer_model: Optional[str] = None,
     ) -> Optional[Profile]:
-        """Create a profile."""
+        """创建配置。"""
 
 
 class LLMProfileFactory(ProfileFactory):
-    """Create a profile by LLM.
+    """通过 LLM 创建配置。
 
-    Based on LLM automatic generation, it usually specifies the rules of the generation
-     configuration first, clarifies the composition and attributes of the agent
-     configuration in the target population, and then gives a small number of samples,
-    and finally LLM generates the configuration of all agents.
+    基于 LLM 自动生成，通常先指定配置生成规则，明确目标人群中智能体配置的组成和属性，
+    然后提供少量样本，最后由 LLM 生成所有智能体的配置。
     """
 
     def create_profile(
@@ -470,21 +465,20 @@ class LLMProfileFactory(ProfileFactory):
         prefer_prompt_language: Optional[str] = None,
         prefer_model: Optional[str] = None,
     ) -> Optional[Profile]:
-        """Create a profile by LLM.
+        """通过 LLM 创建配置。
 
-        TODO: Implement this method.
+        TODO：实现此方法。
         """
         pass
 
 
 class DatasetProfileFactory(ProfileFactory):
-    """Create a profile by dataset.
+    """通过数据集（dataset）创建配置。
 
-    Use existing data sets to generate agent configurations.
+    使用现有数据集生成智能体配置。
 
-    In some cases, the data set contains a large amount of information about real people
-    , first organize the information about real people in the data set into a natural
-    language prompt, which is then used to generate the agent configuration.
+    某些情况下，数据集包含大量真实人物信息；先将这些信息整理为自然语言提示词，
+    再用它生成智能体配置。
     """
 
     def create_profile(
@@ -496,18 +490,18 @@ class DatasetProfileFactory(ProfileFactory):
         prefer_prompt_language: Optional[str] = None,
         prefer_model: Optional[str] = None,
     ) -> Optional[Profile]:
-        """Create a profile by dataset.
+        """通过数据集创建配置。
 
-        TODO: Implement this method.
+        TODO：实现此方法。
         """
         pass
 
 
 class CompositeProfileFactory(ProfileFactory):
-    """Create a profile by combining multiple profile factories."""
+    """通过组合多个配置工厂创建配置。"""
 
     def __init__(self, factories: List[ProfileFactory]):
-        """Create a composite profile factory."""
+        """创建组合配置工厂。"""
         self.factories = factories
 
     def create_profile(
@@ -519,19 +513,18 @@ class CompositeProfileFactory(ProfileFactory):
         prefer_prompt_language: Optional[str] = None,
         prefer_model: Optional[str] = None,
     ) -> Optional[Profile]:
-        """Create a profile by combining multiple profile factories.
+        """通过组合多个配置工厂创建配置。
 
-        TODO: Implement this method.
+        TODO：实现此方法。
         """
         pass
 
 
 class ProfileConfig(BaseModel):
-    """Profile configuration.
+    """配置设置（profile configuration）。
 
-    If factory is not specified, name and role must be specified.
-    If factory is specified and name and role are also specified, the factory will be
-    preferred.
+    未指定 factory 时，必须指定 name 和 role。
+    如果同时指定 factory、name 和 role，将优先使用 factory。
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -565,7 +558,7 @@ class ProfileConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_before(cls, values):
-        """Check before validation."""
+        """在验证（validation）前执行检查。"""
         if isinstance(values, dict):
             return values
         if values["factory"] is None:
@@ -582,9 +575,9 @@ class ProfileConfig(BaseModel):
         prefer_prompt_language: Optional[str] = None,
         prefer_model: Optional[str] = None,
     ) -> Profile:
-        """Create a profile.
+        """创建配置。
 
-        If factory is specified, use the factory to create the profile.
+        如果指定了 factory，则使用该工厂创建配置。
         """
         factory_profile = None
         if profile_id is None:
@@ -668,5 +661,5 @@ class ProfileConfig(BaseModel):
         )
 
     def __hash__(self):
-        """Return the hash value."""
+        """返回哈希值。"""
         return hash(self.profile_id)

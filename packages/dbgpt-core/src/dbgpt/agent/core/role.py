@@ -1,4 +1,4 @@
-"""Role class for role-based conversation."""
+"""基于角色（role-based）的对话角色类。"""
 
 import json
 import logging
@@ -29,16 +29,15 @@ if TYPE_CHECKING:
 
 
 class AgentRunMode(str, Enum):
-    """Agent run mode."""
+    """智能体（agent）的运行模式。"""
 
     DEFAULT = "default"
-    # Run the agent in loop mode, until the conversation is over(Maximum retries or
-    # encounter a stop signal)
+    # 以循环模式（loop mode）运行智能体，直到对话结束（达到最大重试次数或遇到停止信号）。
     LOOP = "loop"
 
 
 class Role(ABC, BaseModel):
-    """Role class for role-based conversation."""
+    """基于角色（role-based）的对话角色类。"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -56,9 +55,8 @@ class Role(ABC, BaseModel):
 
     template_env: SandboxedEnvironment = Field(default_factory=SandboxedEnvironment)
 
-    # Task progress tracking: list of dicts with keys 'step', 'action', 'phase'
-    # This is NOT a pydantic field - managed as a plain instance attribute
-    # so it survives across retry rounds without being serialised into memory.
+    # 任务进度跟踪（task progress tracking）：包含 'step'、'action'、'phase' 键的字典列表。
+    # 这不是 Pydantic 字段，而是普通实例属性，因此可跨重试轮次保留，且不会序列化到记忆中。
     _task_progress: List[Dict] = []
 
     async def build_prompt(
@@ -70,10 +68,10 @@ class Role(ABC, BaseModel):
         is_retry_chat: bool = False,
         **kwargs,
     ) -> str:
-        """Return the prompt template for the role.
+        """返回该角色的提示词模板（prompt template）。
 
         Returns:
-            str: The prompt template.
+            str：提示词模板。
         """
         if is_system:
             return self.current_profile.format_system_prompt(
@@ -96,16 +94,16 @@ class Role(ABC, BaseModel):
             )
 
     def identity_check(self) -> None:
-        """Check the identity of the role."""
+        """检查角色身份（identity）。"""
         pass
 
     def get_name(self) -> str:
-        """Get the name of the role."""
+        """获取角色名称。"""
         return self.current_profile.get_name()
 
     @property
     def current_profile(self) -> Profile:
-        """Return the current profile."""
+        """返回当前配置（profile）。"""
         profile = self.profile.create_profile(prefer_prompt_language=self.language)
         return profile
 
@@ -115,11 +113,10 @@ class Role(ABC, BaseModel):
         language: str = "en",
         is_retry_chat: bool = False,
     ) -> str:
-        """Get agent prompt template."""
+        """获取智能体提示词模板。"""
         self.language = language
         system_prompt = self.current_profile.get_system_prompt_template()
-        # Render via the sandboxed environment to prevent SSTI from any
-        # user-controlled content that reaches the system prompt template.
+        # 通过沙箱环境（sandboxed environment）渲染，防止到达系统提示词模板的用户内容触发 SSTI。
         template = self.template_env.from_string(system_prompt)
 
         env = Environment()
@@ -160,66 +157,65 @@ class Role(ABC, BaseModel):
 
     @property
     def name(self) -> str:
-        """Return the name of the role."""
+        """返回角色名称。"""
         return self.current_profile.get_name()
 
     @property
     def role(self) -> str:
-        """Return the role of the role."""
+        """返回角色的职责。"""
         return self.current_profile.get_role()
 
     @property
     def goal(self) -> Optional[str]:
-        """Return the goal of the role."""
+        """返回角色目标。"""
         return self.current_profile.get_goal()
 
     @property
     def retry_goal(self) -> Optional[str]:
-        """Return the retry goal of the role."""
+        """返回角色的重试目标。"""
         return self.current_profile.get_retry_goal()
 
     @property
     def constraints(self) -> Optional[List[str]]:
-        """Return the constraints of the role."""
+        """返回角色约束条件。"""
         return self.current_profile.get_constraints()
 
     @property
     def retry_constraints(self) -> Optional[List[str]]:
-        """Return the retry constraints of the role."""
+        """返回角色的重试约束条件。"""
         return self.current_profile.get_retry_constraints()
 
     @property
     def desc(self) -> Optional[str]:
-        """Return the description of the role."""
+        """返回角色描述。"""
         return self.current_profile.get_description()
 
     @property
     def expand_prompt(self) -> Optional[str]:
-        """Return the expand prompt introduction of the role."""
+        """返回角色的扩展提示词介绍。"""
         return self.current_profile.get_expand_prompt()
 
     @property
     def write_memory_template(self) -> str:
-        """Return the current save memory template."""
+        """返回当前的记忆保存模板。"""
         return self.current_profile.get_write_memory_template()
 
     @property
     def examples(self) -> Optional[str]:
-        """Return the current example template."""
+        """返回当前示例模板。"""
         return self.current_profile.get_examples()
 
     @property
     def task_progress_summary(self) -> Optional[str]:
-        """Return a human-readable task progress summary.
+        """返回人类可读的任务进度摘要。
 
-        Lists every action the agent has taken so far, marking the last entry as
-        the most recent step.  The summary is injected into every LLM call so the
-        model never forgets what has already been done and what still needs to be
-        done to complete the original task.
+        列出智能体迄今执行的每个操作，并将最后一项标记为最近步骤。
+        摘要会注入每次 LLM 调用，使模型不会忘记已完成的工作以及完成原始任务仍需执行的工作。
         """
         progress = getattr(self, "_task_progress", [])
         if not progress:
             return None
+        # 运行时提示词保持英文原文，便于与既有调用方和解析逻辑保持兼容：任务进度（请勿重复已完成步骤）。
         lines = ["## Task Progress (do NOT repeat completed steps)"]
         for entry in progress:
             step = entry.get("step", "?")
@@ -245,32 +241,30 @@ class Role(ABC, BaseModel):
 
     @property
     def memory_importance_scorer(self) -> Optional[LLMImportanceScorer]:
-        """Create the memory importance scorer.
+        """创建记忆重要性评分器（memory importance scorer）。
 
-        The memory importance scorer is used to score the importance of a memory
-        fragment.
+        记忆重要性评分器用于评估记忆片段的重要性。
         """
         return None
 
     @property
     def memory_insight_extractor(self) -> Optional[LLMInsightExtractor]:
-        """Create the memory insight extractor.
+        """创建记忆洞察提取器（memory insight extractor）。
 
-        The memory insight extractor is used to extract a high-level insight from a
-        memory fragment.
+        记忆洞察提取器用于从记忆片段中提取高层次洞察。
         """
         return None
 
     @property
     def memory_fragment_class(self) -> Type[AgentMemoryFragment]:
-        """Return the memory fragment class."""
+        """返回记忆片段类（memory fragment class）。"""
         return AgentMemoryFragment
 
     async def read_memories(
         self,
         question: str,
     ) -> Union[str, List["AgentMessage"]]:
-        """Read the memories from the memory."""
+        """从记忆中读取历史内容。"""
         memories = await self.memory.read(question)
         recent_messages = [m.raw_observation for m in memories]
         return "".join(recent_messages)
@@ -284,23 +278,23 @@ class Role(ABC, BaseModel):
         check_fail_reason: Optional[str] = None,
         current_retry_counter: Optional[int] = None,
     ) -> AgentMemoryFragment:
-        """Write the memories to the memory.
+        """将内容写入记忆。
 
-        We suggest you to override this method to save the conversation to memory
-        according to your needs.
+        建议根据实际需求重写此方法，将对话保存到记忆中。
 
         Args:
-            question(str): The question received.
-            ai_message(str): The AI message, LLM output.
-            action_output(ActionOutput): The action output.
-            check_pass(bool): Whether the check pass.
-            check_fail_reason(str): The check fail reason.
-            current_retry_counter(int): The current retry counter.
+            question(str)：收到的问题。
+            ai_message(str)：AI 消息，即 LLM 输出。
+            action_output(ActionOutput)：操作输出。
+            check_pass(bool)：检查是否通过。
+            check_fail_reason(str)：检查失败原因。
+            current_retry_counter(int)：当前重试计数器。
 
         Returns:
-            AgentMemoryFragment: The memory fragment created.
+            AgentMemoryFragment：创建的记忆片段。
         """
         if not action_output:
+            # 运行时异常提示保持英文原文，避免影响既有错误处理逻辑：保存记忆必须提供操作输出。
             raise ValueError("Action output is required to save to memory.")
 
         mem_thoughts = action_output.thoughts or ai_message
@@ -319,12 +313,10 @@ class Role(ABC, BaseModel):
         )
         observation = check_fail_reason or action_output.observations
 
-        # When the tool result was persisted to disk (oversized output),
-        # ``content`` holds the <persisted-output> preview block (with file
-        # path) and ``observations`` holds the full content. Store the preview
-        # block in memory so read_memories reconstructs a size-bounded
-        # Observation instead of the full output. The full content remains
-        # available on disk via the persisted_path / snapshot_path.
+        # 当工具结果因输出过大而持久化到磁盘时，``content`` 保存带文件路径的
+        # <persisted-output> 预览块，而 ``observations`` 保存完整内容。将预览块存入记忆，
+        # 让 read_memories 重建有大小限制的 Observation，而不是完整输出；完整内容仍可通过
+        # persisted_path / snapshot_path 在磁盘上获取。
         persisted_path = getattr(action_output, "persisted_path", None)
         if persisted_path and not check_fail_reason:
             observation = action_output.content
@@ -349,10 +341,9 @@ class Role(ABC, BaseModel):
             memory_map["question"] = question
 
         # ------------------------------------------------------------------
-        # Maintain task progress tracking (survives buffer eviction).
-        # _task_progress is a plain list on the instance, NOT a pydantic field,
-        # so it is never serialised/deserialised and stays in memory for the full
-        # lifetime of the agent object.
+        # 维护任务进度跟踪（可在缓冲区驱逐后保留）。
+        # _task_progress 是实例上的普通列表，而不是 Pydantic 字段，因此不会被序列化/反序列化，
+        # 并会在智能体对象的整个生命周期内保留在内存中。
         # ------------------------------------------------------------------
         snapshot_path: Optional[str] = None
         if check_pass and action:
@@ -360,10 +351,10 @@ class Role(ABC, BaseModel):
                 object.__setattr__(self, "_task_progress", [])
             progress: List[Dict] = self._task_progress  # type: ignore[assignment]
             step_num = (current_retry_counter or 0) + 1
-            # Estimate observation tokens for budget tracking
+            # 估算 observation 的 token 数量，用于预算跟踪。
             obs_tokens = len(observation) // 4 if observation else 0
-            # Write full operation detail to a snapshot file so Layer 1/2
-            # compaction never loses precise values (action_input, observation).
+            # 将完整操作细节写入快照文件，使第 1/2 层压缩（Layer 1/2 compaction）不会丢失
+            # 精确值（action_input、observation）。
             snapshot_path = self._write_op_snapshot(
                 step=step_num,
                 action=action,
@@ -416,18 +407,14 @@ class Role(ABC, BaseModel):
         action_intention: Optional[str] = None,
         action_reason: Optional[str] = None,
     ) -> Optional[str]:
-        """Write a full operation snapshot to disk and return the file path.
+        """将完整操作快照写入磁盘并返回文件路径。
 
-        The snapshot preserves the complete action_input and observation so that
-        Layer 1 / Layer 2 compaction never loses precise values (file paths,
-        computed results, variable names, etc.).  The agent can later recover the
-        detail by reading this file via a ``read_file`` action.
+        快照会保留完整的 action_input 和 observation，使第 1 层/第 2 层压缩不会丢失精确值
+        （文件路径、计算结果、变量名等）。智能体之后可通过 ``read_file`` 操作读取此文件来恢复细节。
 
-        Returns the absolute path of the written file, or None if no output_dir
-        is available on the agent context.
+        如果智能体上下文中没有可用的 output_dir，则返回写入文件的绝对路径，否则返回 None。
         """
-        # Resolve the base directory from AgentContext.output_dir, falling back
-        # to DBGPT_HOME/workspace/op_snapshots.
+        # 从 AgentContext.output_dir 解析基础目录；若不可用，则回退到 DBGPT_HOME/workspace/op_snapshots。
         output_dir: Optional[str] = None
         ctx = getattr(self, "agent_context", None)
         if ctx is not None:
@@ -464,13 +451,14 @@ class Role(ABC, BaseModel):
                 json.dump(payload, f, ensure_ascii=False, indent=2)
             return filepath
         except Exception:
+            # 日志字符串保持英文原文，便于检索既有日志：写入操作快照失败。
             logger.exception(
                 "Failed to write op snapshot for step %d action %s", step, action
             )
             return None
 
     async def recovering_memory(self, action_outputs: List[ActionOutput]) -> None:
-        """Recover the memory from the action outputs."""
+        """从操作输出中恢复记忆。"""
         fragments = []
         fragment_cls: Type[AgentMemoryFragment] = self.memory_fragment_class
         for action_output in action_outputs:
