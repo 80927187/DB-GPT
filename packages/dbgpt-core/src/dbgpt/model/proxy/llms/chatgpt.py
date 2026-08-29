@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 @auto_register_resource(
+    # OpenAI 兼容代理大语言模型。
     label=_("OpenAI Compatible Proxy LLM"),
     category=ResourceCategory.LLM_CLIENT,
     tags={"order": TAGS_ORDER_HIGH},
@@ -41,13 +42,14 @@ logger = logging.getLogger(__name__)
 )
 @dataclass
 class OpenAICompatibleDeployModelParameters(LLMDeployModelParameters):
-    """OpenAI compatible deploy model parameters."""
+    """OpenAI 兼容部署模型参数（deploy model parameters）。"""
 
     provider: str = "proxy/openai"
 
     api_base: Optional[str] = field(
         default="${env:OPENAI_API_BASE:-https://api.openai.com/v1}",
         metadata={
+            # OpenAI API 的基础 URL。
             "help": _("The base url of the OpenAI API."),
         },
     )
@@ -55,6 +57,7 @@ class OpenAICompatibleDeployModelParameters(LLMDeployModelParameters):
     api_key: Optional[str] = field(
         default="${env:OPENAI_API_KEY}",
         metadata={
+            # OpenAI API 的访问密钥。
             "help": _("The API key of the OpenAI API."),
             "tags": "privacy",
         },
@@ -62,18 +65,21 @@ class OpenAICompatibleDeployModelParameters(LLMDeployModelParameters):
     api_type: Optional[str] = field(
         default=None,
         metadata={
+            # OpenAI API 类型；使用 Azure 时可填写 azure。
             "help": _("The type of the OpenAI API, if you use Azure, it can be: azure")
         },
     )
     api_version: Optional[str] = field(
         default=None,
         metadata={
+            # OpenAI API 的版本。
             "help": _("The version of the OpenAI API."),
         },
     )
     context_length: Optional[int] = field(
         default=None,
         metadata={
+            # OpenAI API 的上下文长度；为 None 时由模型决定。
             "help": _(
                 "The context length of the OpenAI API. If None, it is determined by the"
                 " model."
@@ -83,11 +89,12 @@ class OpenAICompatibleDeployModelParameters(LLMDeployModelParameters):
 
     http_proxy: Optional[str] = field(
         default=None,
+        # 要使用的 HTTP 或 HTTPS 代理。
         metadata={"help": _("The http or https proxy to use openai")},
     )
 
     concurrency: Optional[int] = field(
-        default=100, metadata={"help": _("Model concurrency limit")}
+        default=100, metadata={"help": _("Model concurrency limit")}  # 模型并发限制。
     )
 
 
@@ -101,27 +108,32 @@ async def chatgpt_generate_stream(
 
 
 @register_resource(
+    # OpenAI 大语言模型客户端。
     label=_("OpenAI LLM Client"),
     name="openai_llm_client",
     category=ResourceCategory.LLM_CLIENT,
     parameters=[
         Parameter.build_from(
+            # OpenAI API 密钥参数。
             label=_("OpenAI API Key"),
             name="api_key",
             type=str,
             optional=True,
             default=None,
+            # 未设置 OPENAI_API_KEY 环境变量时可填写的 OpenAI API 密钥说明。
             description=_(
                 "OpenAI API Key, not required if you have set OPENAI_API_KEY "
                 "environment variable."
             ),
         ),
         Parameter.build_from(
+            # OpenAI API 基础地址参数。
             label=_("OpenAI API Base"),
             name="api_base",
             type=str,
             optional=True,
             default=None,
+            # 未设置 OPENAI_API_BASE 环境变量时可填写的 OpenAI API 基础地址说明。
             description=_(
                 "OpenAI API Base, not required if you have set OPENAI_API_BASE "
                 "environment variable."
@@ -175,19 +187,18 @@ class OpenAILLMClient(ProxyLLMClient):
         self._openai_kwargs = openai_kwargs or {}
         super().__init__(model_names=[model_alias], context_length=context_length)
 
-        # Prepare openai client and cache default headers
-        # It will block the main thread in some cases
+        # 准备 OpenAI 客户端并缓存默认请求头。
+        # 在某些情况下，此操作会阻塞主线程。
         _ = self.client.default_headers
 
     @classmethod
     def param_class(cls) -> Type[OpenAICompatibleDeployModelParameters]:
-        """Get model parameters class.
+        """获取模型参数类（model parameters class）。
 
-        This method will be called by the factory method to get the model parameters
-        class.
+        工厂方法（factory method）会调用此方法获取模型参数类。
 
-        Returns:
-            Type[OpenAICompatibleDeployModelParameters]: model parameters class
+        返回：
+            Type[OpenAICompatibleDeployModelParameters]：模型参数类
 
         """
         return OpenAICompatibleDeployModelParameters
@@ -198,7 +209,7 @@ class OpenAILLMClient(ProxyLLMClient):
         model_params: OpenAICompatibleDeployModelParameters,
         default_executor: Optional[Executor] = None,
     ) -> "OpenAILLMClient":
-        """Create a new client with the model parameters."""
+        """使用模型参数创建新的客户端（client）。"""
         return cls(
             api_key=model_params.api_key,
             api_base=model_params.api_base,
@@ -208,18 +219,18 @@ class OpenAILLMClient(ProxyLLMClient):
             proxy=model_params.http_proxy,
             model_alias=model_params.real_provider_model_name,
             context_length=max(model_params.context_length or 8192, 8192),
-            # full_url=model_params.proxy_server_url,
+            # full_url=model_params.proxy_server_url（完整 URL，当前未启用）。
         )
 
     @classmethod
     def generate_stream_function(
         cls,
     ) -> Optional[Union[GenerateStreamFunction, AsyncGenerateStreamFunction]]:
-        """Get generate stream function.
+        """获取生成流函数（generate stream function）。
 
-        Returns:
+        返回：
             Optional[Union[GenerateStreamFunction, AsyncGenerateStreamFunction]]:
-                generate stream function
+                生成流函数
         """
         return chatgpt_generate_stream
 
@@ -246,7 +257,7 @@ class OpenAILLMClient(ProxyLLMClient):
         payload = {"stream": stream}
         model = request.model or self.default_model
         payload["model"] = model
-        # Apply openai kwargs
+        # 应用 OpenAI 的额外关键字参数。
         for k, v in self._openai_kwargs.items():
             payload[k] = v
         if request.temperature:
@@ -268,12 +279,14 @@ class OpenAILLMClient(ProxyLLMClient):
         messages = request.to_common_messages()
         payload = self._build_request(request)
         logger.info(
+            # 记录发送给 OpenAI 的请求载荷和消息。
             f"Send request to openai, payload: {payload}\n\n messages:\n{messages}"
         )
         try:
             return await self.generate_v1(messages, payload)
         except Exception as e:
             return ModelOutput(
+                # 保留原始错误提示字符串，避免影响程序行为。
                 text=f"**LLMServer Generate Error, Please CheckErrorInfo.**: {e}",
                 error_code=1,
             )
@@ -287,6 +300,7 @@ class OpenAILLMClient(ProxyLLMClient):
         messages = request.to_common_messages()
         payload = self._build_request(request, stream=True)
         logger.info(
+            # 记录发送给 OpenAI 的流式请求载荷和消息。
             f"Send request to openai, payload: {payload}\n\n messages:\n{messages}"
         )
         async for r in self.generate_stream_v1(messages, payload):
@@ -318,7 +332,7 @@ class OpenAILLMClient(ProxyLLMClient):
         async for r in chat_completion:
             if len(r.choices) == 0:
                 continue
-            # Check for empty 'choices' issue in Azure GPT-4o responses
+            # 处理 Azure GPT-4o 响应中 choices 为空的问题。
             if r.choices[0] is not None and r.choices[0].delta is None:
                 continue
             delta_obj = r.choices[0].delta
@@ -339,13 +353,12 @@ class OpenAILLMClient(ProxyLLMClient):
         return [model_metadata]
 
     async def get_context_length(self) -> int:
-        """Get the context length of the model.
+        """获取模型的上下文长度（context length）。
 
-        Returns:
-            int: The context length.
-        TODO: This is a temporary solution. We should have a better way to get the
-        context length.
-            eg. get real context length from the openai api.
+        返回：
+            int：上下文长度。
+        TODO：这是临时方案，后续应采用更好的方式获取上下文长度，
+        例如从 OpenAI API 获取真实的上下文长度。
         """
         return self._context_length
 
@@ -362,6 +375,7 @@ register_proxy_model_adapter(
             ],
             context_length=128000,
             max_output_length=16384,
+            # OpenAI 在音频、视觉和文本领域的旗舰模型。
             description="The flagship model across audio, vision, and text by OpenAI",
             link="https://openai.com/index/hello-gpt-4o/",
             function_calling=True,
@@ -370,6 +384,7 @@ register_proxy_model_adapter(
             model=["gpt-4o-mini", "gpt-4o-mini-2024-07-18", "gpt-4o-mini-2024-07-18"],
             context_length=128000,
             max_output_length=16384,
+            # OpenAI 在音频、视觉和文本领域的旗舰模型。
             description="The flagship model across audio, vision, and text by OpenAI",
             link="https://openai.com/index/hello-gpt-4o/",
             function_calling=True,
@@ -378,6 +393,7 @@ register_proxy_model_adapter(
             model=["o1", "o1-2024-12-17"],
             context_length=200000,
             max_output_length=100000,
+            # OpenAI 推理模型。
             description="Reasoning model by OpenAI",
             link="https://platform.openai.com/docs/models#o1",
             function_calling=True,
@@ -386,6 +402,7 @@ register_proxy_model_adapter(
             model=["o1-mini", "o1-mini-2024-09-12"],
             context_length=128000,
             max_output_length=65536,
+            # OpenAI 推理模型。
             description="Reasoning model by OpenAI",
             link="https://platform.openai.com/docs/models#o1",
             function_calling=True,
@@ -394,6 +411,7 @@ register_proxy_model_adapter(
             model=["o1-preview", "o1-preview-2024-09-12"],
             context_length=128000,
             max_output_length=32768,
+            # OpenAI 推理模型。
             description="Reasoning model by OpenAI",
             link="https://platform.openai.com/docs/models#o1",
             function_calling=True,
@@ -402,6 +420,7 @@ register_proxy_model_adapter(
             model=["o3-mini", "o3-mini-2025-01-31"],
             context_length=200000,
             max_output_length=100000,
+            # OpenAI 推理模型。
             description="Reasoning model by OpenAI",
             link="https://platform.openai.com/docs/models#o3-mini",
             function_calling=True,
@@ -416,6 +435,7 @@ register_proxy_model_adapter(
             ],
             context_length=128000,
             max_output_length=4096,
+            # OpenAI GPT-4-Turbo 模型。
             description="GPT-4-Turbo by OpenAI",
             link="https://platform.openai.com/docs/models#gpt-4-turbo-and-gpt-4",
             function_calling=True,
@@ -428,6 +448,7 @@ register_proxy_model_adapter(
             ],
             context_length=8192,
             max_output_length=8192,
+            # OpenAI GPT-4-Turbo 模型。
             description="GPT-4-Turbo by OpenAI",
             link="https://platform.openai.com/docs/models#gpt-4-turbo-and-gpt-4",
             function_calling=True,
@@ -440,6 +461,7 @@ register_proxy_model_adapter(
             ],
             context_length=16385,
             max_output_length=4096,
+            # OpenAI GPT-3.5 模型。
             description="GPT-3.5 by OpenAI",
             link="https://platform.openai.com/docs/models#gpt-3-5-turbo",
             function_calling=True,
