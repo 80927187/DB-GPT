@@ -1,4 +1,4 @@
-"""AIWrapper for LLM."""
+"""用于大语言模型（LLM）的 AIWrapper 封装。"""
 
 import asyncio
 import json
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class AIWrapper:
-    """AIWrapper for LLM."""
+    """用于大语言模型（LLM）的调用封装器。"""
 
     cache_path_root: str = ".cache"
     extra_kwargs = {
@@ -36,7 +36,7 @@ class AIWrapper:
     def __init__(
         self, llm_client: LLMClient, output_parser: Optional[BaseOutputParser] = None
     ):
-        """Create an AIWrapper instance."""
+        """创建一个 AIWrapper 实例。"""
         self.llm_echo = False
         self.model_cache_enable = False
         self._llm_client = llm_client
@@ -49,7 +49,7 @@ class AIWrapper:
         context: Optional[Dict] = None,
         allow_format_str_template: Optional[bool] = False,
     ):
-        """Instantiate the template with the context."""
+        """使用上下文实例化模板。"""
         if not context or template is None:
             return template
         if isinstance(template, str):
@@ -57,32 +57,33 @@ class AIWrapper:
         return template(context)
 
     def _construct_create_params(self, create_config: Dict, extra_kwargs: Dict) -> Dict:
-        """Prime the create_config with additional_kwargs."""
-        # Validate the config
+        """使用额外参数初始化创建配置（create_config）。"""
+        # 校验配置
         prompt = create_config.get("prompt")
         messages = create_config.get("messages")
         if prompt is None and messages is None:
             raise ValueError(
+                # 创建配置必须提供 prompt 或 messages，且不能同时提供。
                 "Either prompt or messages should be in create config but not both."
             )
 
         context = extra_kwargs.get("context")
         if context is None:
-            # No need to instantiate if no context is provided.
+            # 未提供上下文时无需进行实例化。
             return create_config
-        # Instantiate the prompt or messages
+        # 实例化 prompt 或 messages
         allow_format_str_template = extra_kwargs.get("allow_format_str_template", False)
-        # Make a copy of the config
+        # 复制一份配置，避免修改原始对象
         params = create_config.copy()
         params["context"] = context
 
         if prompt is not None:
-            # Instantiate the prompt
+            # 实例化 prompt
             params["prompt"] = self.instantiate(
                 prompt, context, allow_format_str_template
             )
         elif context and messages and isinstance(messages, list):
-            # Instantiate the messages
+            # 实例化 messages
             params["messages"] = [
                 (
                     {
@@ -99,19 +100,19 @@ class AIWrapper:
         return params
 
     def _separate_create_config(self, config):
-        """Separate the config into create_config and extra_kwargs."""
+        """将配置拆分为 create_config 和 extra_kwargs。"""
         create_config = {k: v for k, v in config.items() if k not in self.extra_kwargs}
         extra_kwargs = {k: v for k, v in config.items() if k in self.extra_kwargs}
         return create_config, extra_kwargs
 
     def _get_key(self, config):
-        """Get a unique identifier of a configuration.
+        """获取配置的唯一标识符。
 
-        Args:
-            config (dict or list): A configuration.
+        参数:
+            config (dict or list): 配置对象。
 
-        Returns:
-            tuple: A unique identifier which can be used as a key for a dict.
+        返回:
+            tuple: 可用作字典键的唯一标识符。
         """
         non_cache_key = ["api_key", "base_url", "api_type", "api_version"]
         copied = False
@@ -122,15 +123,15 @@ class AIWrapper:
         return json.dumps(config, sort_keys=True, ensure_ascii=False)
 
     async def create(self, verbose: bool = False, **config):
-        """Create llm client request."""
-        # merge the input config with the i-th config in the config list
+        """创建大语言模型客户端请求。"""
+        # 将输入配置合并为完整配置
         full_config = {**config}
-        # separate the config into create_config and extra_kwargs
+        # 将配置拆分为 create_config 和 extra_kwargs
         create_config, extra_kwargs = self._separate_create_config(full_config)
 
-        # construct the create params
+        # 构造创建参数
         params = self._construct_create_params(create_config, extra_kwargs)
-        # get the cache_seed, filter_func and context
+        # 获取 cache_seed、filter_func 和 context 等附加参数
         filter_func = extra_kwargs.get("filter_func")
         context = extra_kwargs.get("context")
         llm_model = extra_kwargs.get("llm_model")
@@ -152,6 +153,7 @@ class AIWrapper:
                 stream_callback,
             )
         except LLMChatError as e:
+            # 保留原始英文日志信息，便于与现有日志检索规则兼容。
             logger.debug(f"{llm_model} generate failed!{str(e)}")
             raise e
         else:
@@ -159,7 +161,7 @@ class AIWrapper:
                 context=context, response=response
             )
             if pass_filter:
-                # Return the response if it passes the filter
+                # 响应通过过滤器时返回该响应
                 return response
             else:
                 return None
@@ -172,26 +174,24 @@ class AIWrapper:
         temperature: float = 0.3,
         conv_id: Optional[str] = None,
     ) -> str:
-        """Generate text from a single prompt.
+        """根据单个 prompt 生成文本。
 
-        A thin convenience wrapper around :meth:`create` for simple text
-        generation use cases such as context summarization (Layer 3
-        compaction) where a full message list is unnecessary.
+        这是 :meth:`create` 的轻量便捷封装，适用于上下文摘要（第三层压缩，Layer 3
+        compaction）等不需要完整消息列表的简单文本生成场景。
 
-        Args:
-            prompt: The user prompt to send to the model.
-            llm_model: Model name. Required — ``AIWrapper`` does not hold a
-                default model, so the caller (e.g. ``ContextManager``) must
-                pass the agent's model name.
-            max_new_tokens: Max tokens to generate.
-            temperature: Sampling temperature.
-            conv_id: Conversation id for tracing.
+        参数:
+            prompt: 发送给模型的用户提示词。
+            llm_model: 模型名称。必填；``AIWrapper`` 不保存默认模型，因此调用方（例如
+                ``ContextManager``）必须传入智能体使用的模型名称。
+            max_new_tokens: 要生成的最大 token 数。
+            temperature: 采样温度。
+            conv_id: 用于链路追踪的会话 ID。
 
-        Returns:
-            The generated text. On failure returns an empty string (the
-            caller is expected to handle the empty-result case).
+        返回:
+            生成的文本。失败时返回空字符串（调用方应处理结果为空的情况）。
         """
         if not llm_model:
+            # 保留原始英文异常信息，避免影响依赖该文本的调用方。
             raise ValueError("llm_model is required for generate_text()")
         messages = [{"role": "user", "content": prompt}]
         try:
@@ -204,6 +204,7 @@ class AIWrapper:
                 conv_id=conv_id,
             )
         except LLMChatError:
+            # 保留原始英文日志信息，便于与现有日志检索规则兼容。
             logger.exception("generate_text: LLM call failed")
             return ""
         return response or ""
@@ -218,7 +219,7 @@ class AIWrapper:
 
     def _llm_messages_convert(self, params):
         gpts_messages = params["messages"]
-        # TODO
+        # TODO：待实现消息格式转换
 
         return gpts_messages
 
@@ -241,6 +242,7 @@ class AIWrapper:
             "max_new_tokens": int(params.get("max_new_tokens")),
             "echo": self.llm_echo,
         }
+        # 保留原始英文请求日志格式，便于与现有日志检索规则兼容。
         logger.info(f"Request: \n{payload}")
         span = root_tracer.start_span(
             "Agent.llm_client.no_streaming_call",
@@ -268,6 +270,7 @@ class AIWrapper:
                     if asyncio.iscoroutine(result):
                         await result
                 except Exception:
+                    # 保留原始英文日志信息，便于与现有日志检索规则兼容。
                     logger.exception("stream_callback error")
 
             async for output in self._llm_client.generate_stream(model_request.copy()):
@@ -298,6 +301,7 @@ class AIWrapper:
                         }
                     )
                 if memory and stream_out:
+                    # 仅用于触发相关模块加载；保留 noqa 指令以避免未使用导入告警。
                     from ... import GptsMemory  # noqa: F401
 
                     if model_output:
@@ -312,16 +316,19 @@ class AIWrapper:
                             temp_message,
                         )
             if not model_output:
+                # 保留原始英文异常信息，避免影响依赖该文本的调用方。
                 raise ValueError("LLM generate stream is null!")
             parsed_output = model_output.gen_text_with_thinking()
 
             if verbose:
                 print("\n", "-" * 80, flush=True, sep="")
+                # 以下调试输出保留英文标签，便于与现有日志和调试记录兼容。
                 print(f"String Prompt[verbose]: \n{str_prompt}")
                 print(f"LLM Output[verbose]: \n{parsed_output}")
                 print("-" * 80, "\n", flush=True, sep="")
             return parsed_output
         except Exception as e:
+            # 保留原始英文日志信息，便于与现有日志检索规则兼容。
             logger.error(
                 f"Call LLMClient error, {str(e)}, detail: {traceback.format_exc()}"
             )

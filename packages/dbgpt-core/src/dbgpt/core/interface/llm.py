@@ -1,4 +1,4 @@
-"""The interface for LLM."""
+"""大语言模型（LLM）接口。"""
 
 import collections
 import copy
@@ -32,65 +32,63 @@ logger = logging.getLogger(__name__)
 @dataclass
 @PublicAPI(stability="beta")
 class ModelInferenceMetrics:
-    """A class to represent metrics for assessing the inference performance of a LLM."""
+    """用于评估大语言模型推理性能的指标类。"""
 
     collect_index: Optional[int] = 0
 
     start_time_ms: Optional[int] = None
-    """The timestamp (in milliseconds) when the model inference starts."""
+    """模型推理开始时的时间戳（毫秒）。"""
 
     end_time_ms: Optional[int] = None
-    """The timestamp (in milliseconds) when the model inference ends."""
+    """模型推理结束时的时间戳（毫秒）。"""
 
     current_time_ms: Optional[int] = None
-    """The current timestamp (in milliseconds) when the model inference return
-    partially output(stream)."""
+    """模型推理返回部分输出（流式输出）时的当前时间戳（毫秒）。"""
 
     first_token_time_ms: Optional[int] = None
-    """The timestamp (in milliseconds) when the first token is generated."""
+    """生成首个 token 时的时间戳（毫秒）。"""
 
     first_completion_time_ms: Optional[int] = None
-    """The timestamp (in milliseconds) when the first completion is generated."""
+    """生成首个补全结果时的时间戳（毫秒）。"""
 
     first_completion_tokens: Optional[int] = None
-    """The number of tokens when the first completion is generated."""
+    """生成首个补全结果时的 token 数量。"""
 
     prompt_tokens: Optional[int] = None
-    """The number of tokens in the input prompt."""
+    """输入提示词（prompt）中的 token 数量。"""
 
     completion_tokens: Optional[int] = None
-    """The number of tokens in the generated completion."""
+    """生成补全结果中的 token 数量。"""
 
     total_tokens: Optional[int] = None
-    """The total number of tokens (prompt plus completion)."""
+    """token 总数（提示词加补全结果）。"""
 
     speed_per_second: Optional[float] = None
-    """The average number of tokens generated per second. Includes both prefill and 
-    decode time."""
+    """平均每秒生成的 token 数，包括预填充（prefill）和解码（decode）时间。"""
 
     prefill_tokens_per_second: Optional[float] = None
-    """Prefill speed in tokens per second."""
+    """预填充阶段每秒生成的 token 数。"""
 
     decode_tokens_per_second: Optional[float] = None
-    """The average number of tokens generated per second during the decode phase."""
+    """解码阶段平均每秒生成的 token 数。"""
 
     current_gpu_infos: Optional[List[GPUInfo]] = None
-    """Current gpu information, all devices"""
+    """当前所有设备的 GPU 信息。"""
 
     avg_gpu_infos: Optional[List[GPUInfo]] = None
-    """Average memory usage across all collection points"""
+    """所有采集点的平均显存使用量。"""
 
     @staticmethod
     def create_metrics(
         last_metrics: Optional["ModelInferenceMetrics"] = None,
     ) -> "ModelInferenceMetrics":
-        """Create metrics for model inference.
+        """创建模型推理指标。
 
         Args:
-            last_metrics(ModelInferenceMetrics): The last metrics.
+            last_metrics(ModelInferenceMetrics): 上一次的指标。
 
         Returns:
-            ModelInferenceMetrics: The metrics for model inference.
+            ModelInferenceMetrics: 模型推理指标。
         """
         start_time_ms = last_metrics.start_time_ms if last_metrics else None
         first_token_time_ms = last_metrics.first_token_time_ms if last_metrics else None
@@ -136,36 +134,35 @@ class ModelInferenceMetrics:
         )
 
     def to_dict(self) -> Dict:
-        """Convert the model inference metrics to dict."""
+        """将模型推理指标转换为字典。"""
         return asdict(self)
 
     def to_printable_string(self) -> str:
-        """Stringify the metrics in an elegant format.
+        """将指标格式化为易读的字符串。
 
         Returns:
-            str: A formatted string containing first token latency, prefill speed,
-                 decode speed, prompt tokens and completion tokens.
+            str: 包含首 token 延迟、预填充速度、解码速度、提示词 token 数和补全 token 数的格式化字符串。
         """
         lines = []
 
-        # Calculate first token latency if possible
+        # 如果可行，计算首 token 延迟
         first_token_latency = None
         if self.first_token_time_ms is not None and self.start_time_ms is not None:
             first_token_latency = (
                 self.first_token_time_ms - self.start_time_ms
             ) / 1000.0
 
-        # Add section header
+        # 添加分节标题
         lines.append("=== Model Inference Metrics ===")
 
-        # Latency metrics
+        # 延迟指标
         lines.append("\n▶ Latency:")
         if first_token_latency is not None:
             lines.append(f"  • First Token Latency: {first_token_latency:.3f}s")
         else:
             lines.append("  • First Token Latency: N/A")
 
-        # Speed metrics
+        # 速度指标
         lines.append("\n▶ Speed:")
         if self.prefill_tokens_per_second is not None:
             lines.append(
@@ -181,7 +178,7 @@ class ModelInferenceMetrics:
         else:
             lines.append("  • Decode Speed: N/A")
 
-        # Token counts
+        # token 数量
         lines.append("\n▶ Tokens:")
         if self.prompt_tokens is not None:
             lines.append(f"  • Prompt Tokens: {self.prompt_tokens}")
@@ -202,58 +199,57 @@ class ModelInferenceMetrics:
 @dataclass
 @PublicAPI(stability="beta")
 class ModelRequestContext:
-    """A class to represent the context of a LLM model request."""
+    """表示大语言模型请求上下文的类。"""
 
     stream: bool = False
-    """Whether to return a stream of responses."""
+    """是否以流式方式返回响应。"""
 
     cache_enable: bool = False
-    """Whether to enable the cache for the model inference"""
+    """是否为模型推理启用缓存。"""
 
     user_name: Optional[str] = None
-    """The user name of the model request."""
+    """模型请求的用户名。"""
 
     sys_code: Optional[str] = None
-    """The system code of the model request."""
+    """模型请求的系统代码。"""
 
     conv_uid: Optional[str] = None
-    """The conversation id of the model inference."""
+    """模型推理的会话 ID。"""
 
     span_id: Optional[str] = None
-    """The span id of the model inference."""
+    """模型推理的跨度 ID。"""
 
     chat_mode: Optional[str] = None
-    """The chat mode of the model inference."""
+    """模型推理的聊天模式。"""
 
     chat_param: Optional[str] = None
-    """The chat param of chat mode"""
+    """聊天模式的参数。"""
 
     extra: Optional[Dict[str, Any]] = field(default_factory=dict)
-    """The extra information of the model inference."""
+    """模型推理的额外信息。"""
 
     request_id: Optional[str] = None
-    """The request id of the model inference."""
+    """模型推理的请求 ID。"""
 
     is_reasoning_model: Optional[bool] = False
-    """Whether the model is a reasoning model."""
+    """模型是否为推理模型。"""
 
 
 @dataclass
 @PublicAPI(stability="beta")
 class ModelOutput:
-    """A class to represent the output of a LLM."""
+    """表示大语言模型输出的类。"""
 
     content: Union[MediaContent, List[MediaContent]]
-    """The generated text."""
+    """生成的文本。"""
     error_code: int
-    """The error code of the model inference. If the model inference is successful,
-    the error code is 0."""
+    """模型推理的错误码。模型推理成功时错误码为 0。"""
     incremental: bool = False
     model_context: Optional[Dict] = None
     finish_reason: Optional[str] = None
     usage: Optional[Dict[str, Any]] = None
     metrics: Optional[ModelInferenceMetrics] = None
-    """Some metrics for model inference"""
+    """模型推理的一些指标。"""
 
     def __init__(
         self,
@@ -286,7 +282,7 @@ class ModelOutput:
                 setattr(self, k, v)
 
     def to_dict(self) -> Dict:
-        """Convert the model output to dict."""
+        """将模型输出转换为字典。"""
         text = self.gen_text_with_thinking()
         return {
             "error_code": self.error_code,
@@ -300,12 +296,12 @@ class ModelOutput:
 
     @property
     def success(self) -> bool:
-        """Check if the model inference is successful."""
+        """检查模型推理是否成功。"""
         return self.error_code == 0
 
     @property
     def has_text(self) -> bool:
-        """Check if the model output has text content."""
+        """检查模型输出是否包含文本内容。"""
         if isinstance(self.content, MediaContent):
             return self.content.type == MediaContentType.TEXT
         elif isinstance(self.content, list):
@@ -314,7 +310,7 @@ class ModelOutput:
 
     @property
     def text(self) -> str:
-        """The generated text."""
+        """生成的文本。"""
         if isinstance(self.content, MediaContent):
             return self.content.get_text()
         elif isinstance(self.content, list) and all(
@@ -325,7 +321,7 @@ class ModelOutput:
 
     @property
     def has_thinking(self) -> bool:
-        """Check if the model output has thinking content."""
+        """检查模型输出是否包含思考内容。"""
         if isinstance(self.content, MediaContent):
             return self.content.type == MediaContentType.THINKING
         elif isinstance(self.content, list) and self.content:
@@ -335,7 +331,7 @@ class ModelOutput:
 
     @property
     def thinking_text(self) -> Optional[str]:
-        """The reasoning content."""
+        """推理内容。"""
         if not self.content:
             return None
         if isinstance(self.content, MediaContent):
@@ -345,13 +341,13 @@ class ModelOutput:
         elif isinstance(self.content, list) and all(
             isinstance(c, MediaContent) for c in self.content
         ):
-            # In most cases, just one thinking content
+            # 在大多数情况下只有一段思考内容
             thinking_content = [
                 c for c in self.content if c.type == MediaContentType.THINKING
             ]
             if not thinking_content:
                 return None
-            # Return the last thinking content
+            # 返回最后一段思考内容
             return thinking_content[-1].get_thinking()
         return None
 
@@ -371,10 +367,10 @@ class ModelOutput:
 
     @text.setter
     def text(self, value: str):
-        """Set the generated text."""
+        """设置生成的文本。"""
         if not isinstance(value, str):
             raise ValueError("text must be a string")
-        # Build a new MediaContent object and assign it to content
+        # 构建新的 MediaContent 对象并将其赋给 content
         self.content = MediaContent(
             type="text",
             object=MediaObject(data=value, format="text"),
@@ -382,7 +378,7 @@ class ModelOutput:
 
     @classmethod
     def build_thinking(cls, thinking: str, error_code: int = 0) -> "ModelOutput":
-        """Create a ModelOutput object from thinking."""
+        """根据思考内容创建 ModelOutput 对象。"""
         return cls(
             error_code=error_code,
             content=MediaContent.build_thinking(thinking),
@@ -400,18 +396,18 @@ class ModelOutput:
         metrics: Optional[ModelInferenceMetrics] = None,
     ) -> "ModelOutput":
         if thinking and text:
-            # Has thinking and text
+            # 同时包含思考内容和文本
             content = [
-                # First thinking
+                # 首先放入思考内容
                 MediaContent.build_thinking(thinking),
                 MediaContent.build_text(text),
             ]
         elif text:
-            # Only text
+            # 仅包含文本
             content = MediaContent.build_text(text)
         elif is_reasoning_model or thinking:
-            # Build a empty thinking content
-            # Handle empty data
+            # 构建空的思考内容
+            # 处理空数据
             content = MediaContent.build_thinking(thinking)
         else:
             content = MediaContent.build_text("")
@@ -426,8 +422,8 @@ class ModelOutput:
 
     @property
     def error_message(self) -> str:
-        """Get the error message.
-        Just return the error message when error_code is not 0.
+        """获取错误消息。
+        当 error_code 不为 0 时返回错误消息。
         """
         return self.text if self.has_text else "Unknown error"
 
@@ -438,60 +434,60 @@ _ModelMessageType = Union[List[ModelMessage], List[Dict[str, Any]]]
 @dataclass
 @PublicAPI(stability="beta")
 class ModelRequest:
-    """The model request."""
+    """模型请求。"""
 
     model: str
-    """The name of the model."""
+    """模型名称。"""
 
     messages: _ModelMessageType
-    """The input messages."""
+    """输入消息。"""
 
     temperature: Optional[float] = None
-    """The temperature of the model inference."""
+    """模型推理的温度参数。"""
 
     top_p: Optional[float] = None
-    """The top p of the model inference."""
+    """模型推理的 Top-p 参数。"""
 
     max_new_tokens: Optional[int] = None
-    """The maximum number of tokens to generate."""
+    """最多生成的 token 数量。"""
 
     stop: Optional[Union[str, List[str]]] = None
-    """The stop condition of the model inference."""
+    """模型推理的停止条件。"""
     stop_token_ids: Optional[List[int]] = None
-    """The stop token ids of the model inference."""
+    """模型推理的停止 token ID。"""
     context_len: Optional[int] = None
-    """The context length of the model inference."""
+    """模型推理的上下文长度。"""
     echo: Optional[bool] = False
-    """Whether to echo the input messages."""
+    """是否回显输入消息。"""
     span_id: Optional[str] = None
-    """The span id of the model inference."""
+    """模型推理的跨度 ID。"""
 
     context: Optional[ModelRequestContext] = field(
         default_factory=lambda: ModelRequestContext()
     )
-    """The context of the model inference."""
+    """模型推理的上下文。"""
 
     @property
     def stream(self) -> bool:
-        """Whether to return a stream of responses."""
+        """是否以流式方式返回响应。"""
         return bool(self.context and self.context.stream)
 
     def copy(self) -> "ModelRequest":
-        """Copy the model request.
+        """复制模型请求。
 
         Returns:
-            ModelRequest: The copied model request.
+            ModelRequest: 复制后的模型请求。
         """
         new_request = copy.deepcopy(self)
-        # Transform messages to List[ModelMessage]
+        # 将消息转换为 List[ModelMessage]
         new_request.messages = new_request.get_messages()
         return new_request
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert the model request to dict.
+        """将模型请求转换为字典。
 
         Returns:
-            Dict[str, Any]: The model request in dict.
+            Dict[str, Any]: 字典形式的模型请求。
         """
         new_reqeust = copy.deepcopy(self)
         new_messages = []
@@ -501,27 +497,26 @@ class ModelRequest:
             else:
                 new_messages.append(message.dict())
         new_reqeust.messages = new_messages
-        # Skip None fields
+        # 跳过值为 None 的字段
         return {k: v for k, v in asdict(new_reqeust).items() if v is not None}
 
     def to_trace_metadata(self) -> Dict[str, Any]:
-        """Convert the model request to trace metadata.
+        """将模型请求转换为追踪元数据。
 
         Returns:
-            Dict[str, Any]: The trace metadata.
+            Dict[str, Any]: 追踪元数据。
         """
         metadata = self.to_dict()
         metadata["prompt"] = self.messages_to_string()
         return metadata
 
     def get_messages(self) -> List[ModelMessage]:
-        """Get the messages.
+        """获取消息。
 
-        If the messages is not a list of ModelMessage, it will be converted to a list
-        of ModelMessage.
+        如果消息不是 ModelMessage 列表，则会转换为 ModelMessage 列表。
 
         Returns:
-            List[ModelMessage]: The messages.
+            List[ModelMessage]: 消息列表。
         """
         messages = []
         for message in self.messages:
@@ -532,10 +527,10 @@ class ModelRequest:
         return messages
 
     def get_single_user_message(self) -> Optional[ModelMessage]:
-        """Get the single user message.
+        """获取单条用户消息。
 
         Returns:
-            Optional[ModelMessage]: The single user message.
+            Optional[ModelMessage]: 单条用户消息。
         """
         messages = self.get_messages()
         if len(messages) != 1 and messages[0].role != ModelMessageRoleType.HUMAN:
@@ -551,16 +546,16 @@ class ModelRequest:
         echo: bool = False,
         **kwargs,
     ):
-        """Build a model request.
+        """构建模型请求。
 
         Args:
-            model(str): The model name.
-            messages(List[ModelMessage]): The messages.
+            model(str): 模型名称。
+            messages(List[ModelMessage]): 消息列表。
             context(Optional[Union[ModelRequestContext, Dict[str, Any], BaseModel]]):
-                The context.
-            stream(bool): Whether to return a stream of responses. Defaults to False.
-            echo(bool): Whether to echo the input messages. Defaults to False.
-            **kwargs: Other arguments.
+                请求上下文。
+            stream(bool): 是否以流式方式返回响应。默认为 False。
+            echo(bool): 是否回显输入消息。默认为 False。
+            **kwargs: 其他参数。
         """
         if not context:
             context = ModelRequestContext(stream=stream)
@@ -595,18 +590,18 @@ class ModelRequest:
     def to_common_messages(
         self, support_system_role: bool = True
     ) -> List[Dict[str, Any]]:
-        """Convert the messages to the common format(like OpenAI API).
+        """将消息转换为通用格式（如 OpenAI API）。
 
-        This function will move last user message to the end of the list.
+        此函数会将最后一条用户消息移动到列表末尾。
 
         Args:
-            support_system_role (bool): Whether to support system role
+            support_system_role (bool): 是否支持 system 角色。
 
         Returns:
-            List[Dict[str, Any]]: The messages in the format of OpenAI API.
+            List[Dict[str, Any]]: OpenAI API 格式的消息。
 
         Raises:
-            ValueError: If the message role is not supported
+            ValueError: 消息角色不受支持时抛出。
 
         Examples:
             .. code-block:: python
@@ -641,19 +636,18 @@ class ModelRequest:
         )
 
     def messages_to_string(self) -> str:
-        """Convert the messages to string.
+        """将消息转换为字符串。
 
         Returns:
-            str: The messages in string format.
+            str: 字符串格式的消息。
         """
         return ModelMessage.messages_to_string(self.get_messages())
 
     def split_messages(self) -> Tuple[List[Dict[str, Any]], List[str]]:
-        """Split the messages.
+        """拆分消息。
 
         Returns:
-            Tuple[List[Dict[str, Any]], List[str]]: The common messages and system
-            messages.
+            Tuple[List[Dict[str, Any]], List[str]]: 通用消息和系统消息。
         """
         messages = self.get_messages()
         common_messages = []
@@ -674,7 +668,7 @@ class ModelRequest:
 
 @dataclass
 class ModelExtraMedata(BaseParameters):
-    """A class to represent the extra metadata of a LLM."""
+    """表示大语言模型额外元数据的类。"""
 
     prompt_roles: List[str] = field(
         default_factory=lambda: [
@@ -682,19 +676,19 @@ class ModelExtraMedata(BaseParameters):
             ModelMessageRoleType.HUMAN,
             ModelMessageRoleType.AI,
         ],
-        metadata={"help": "The roles of the prompt"},
+        metadata={"help": "The roles of the prompt"},  # 提示词的角色
     )
 
     prompt_sep: Optional[str] = field(
         default="\n",
-        metadata={"help": "The separator of the prompt between multiple rounds"},
+        metadata={"help": "The separator of the prompt between multiple rounds"},  # 多轮提示词之间的分隔符
     )
 
-    # You can see the chat template in your model repo tokenizer config,
-    # typically in the tokenizer_config.json
+    # 可在模型仓库的 tokenizer 配置中查看聊天模板，通常位于 tokenizer_config.json
     prompt_chat_template: Optional[str] = field(
         default=None,
         metadata={
+            # 聊天模板，参见 Hugging Face 文档
             "help": "The chat template, see: "
             "https://huggingface.co/docs/transformers/main/en/chat_templating"
         },
@@ -702,10 +696,10 @@ class ModelExtraMedata(BaseParameters):
 
     @property
     def support_system_message(self) -> bool:
-        """Whether the model supports system message.
+        """模型是否支持 system 消息。
 
         Returns:
-            bool: Whether the model supports system message.
+            bool: 模型是否支持 system 消息。
         """
         return ModelMessageRoleType.SYSTEM in self.prompt_roles
 
@@ -713,63 +707,62 @@ class ModelExtraMedata(BaseParameters):
 @dataclass
 @PublicAPI(stability="beta")
 class ModelMetadata(BaseParameters):
-    """A class to represent a LLM model."""
+    """表示大语言模型的类。"""
 
     model: Union[str, List[str]] = field(
-        metadata={"help": "Model name"},
+        metadata={"help": "Model name"},  # 模型名称
     )
     label: Optional[str] = field(
         default=None,
-        metadata={"help": "Model label"},
+        metadata={"help": "Model label"},  # 模型标签
     )
     context_length: Optional[int] = field(
         default=None,
-        metadata={"help": "Context length of model"},
+        metadata={"help": "Context length of model"},  # 模型上下文长度
     )
     max_output_length: Optional[int] = field(
         default=None,
-        metadata={"help": "Max output length of model"},
+        metadata={"help": "Max output length of model"},  # 模型最大输出长度
     )
     description: Optional[str] = field(
         default=None,
-        metadata={"help": "Model description"},
+        metadata={"help": "Model description"},  # 模型描述
     )
     link: Optional[str] = field(
         default=None,
-        metadata={"help": "Model link"},
+        metadata={"help": "Model link"},  # 模型链接
     )
     chat_model: Optional[bool] = field(
         default=True,
-        metadata={"help": "Whether the model is a chat model"},
+        metadata={"help": "Whether the model is a chat model"},  # 是否为聊天模型
     )
     function_calling: Optional[bool] = field(
         default=False,
-        metadata={"help": "Whether the model is a function calling model"},
+        metadata={"help": "Whether the model is a function calling model"},  # 是否为函数调用模型
     )
     metadata: Optional[Dict[str, Any]] = field(
         default_factory=dict,
-        metadata={"help": "Model metadata"},
+        metadata={"help": "Model metadata"},  # 模型元数据
     )
     ext_metadata: Optional[ModelExtraMedata] = field(
         default_factory=ModelExtraMedata,
-        metadata={"help": "Model extra metadata"},
+        metadata={"help": "Model extra metadata"},  # 模型额外元数据
     )
 
     @classmethod
     def from_dict(
         cls, data: dict, ignore_extra_fields: bool = False
     ) -> "ModelMetadata":
-        """Create a new model metadata from a dict."""
+        """根据字典创建新的模型元数据。"""
         if "ext_metadata" in data:
             data["ext_metadata"] = ModelExtraMedata(**data["ext_metadata"])
         return cls(**data)
 
 
 class MessageConverter(ABC):
-    r"""An abstract class for message converter.
+    r"""消息转换器的抽象基类。
 
-    Different LLMs may have different message formats, this class is used to convert
-    the messages to the format of the LLM.
+    不同大语言模型的消息格式可能不同，此类用于将消息转换为对应模型的格式。
 
     Examples:
         >>> from typing import List
@@ -781,8 +774,7 @@ class MessageConverter(ABC):
         ...         messages: List[ModelMessage],
         ...         model_metadata: Optional[ModelMetadata] = None,
         ...     ) -> List[ModelMessage]:
-        ...         # Convert the messages, merge system messages to the last user
-        ...         # message.
+        ...         # 转换消息，将 system 消息合并到最后一条用户消息
         ...         system_message = None
         ...         other_messages = []
         ...         sep = "\\n"
@@ -819,22 +811,22 @@ class MessageConverter(ABC):
         messages: List[ModelMessage],
         model_metadata: Optional[ModelMetadata] = None,
     ) -> List[ModelMessage]:
-        """Convert the messages.
+        """转换消息。
 
         Args:
-            messages(List[ModelMessage]): The messages.
-            model_metadata(ModelMetadata): The model metadata.
+            messages(List[ModelMessage]): 消息列表。
+            model_metadata(ModelMetadata): 模型元数据。
 
         Returns:
-            List[ModelMessage]: The converted messages.
+            List[ModelMessage]: 转换后的消息列表。
         """
 
 
 class DefaultMessageConverter(MessageConverter):
-    """The default message converter."""
+    """默认消息转换器。"""
 
     def __init__(self, prompt_sep: Optional[str] = None):
-        """Create a new default message converter."""
+        """创建默认消息转换器。"""
         self._prompt_sep = prompt_sep
 
     def convert(
@@ -842,34 +834,33 @@ class DefaultMessageConverter(MessageConverter):
         messages: List[ModelMessage],
         model_metadata: Optional[ModelMetadata] = None,
     ) -> List[ModelMessage]:
-        """Convert the messages.
+        """转换消息。
 
-        There are three steps to convert the messages:
+        消息转换分为三个步骤：
 
-        1. Just keep system, human and AI messages
+        1. 仅保留 system、human 和 AI 消息。
 
-        2. Move the last user's message to the end of the list
+        2. 将最后一条用户消息移动到列表末尾。
 
-        3. Convert the messages to no system message if the model does not support
-        system message
+        3. 如果模型不支持 system 消息，则转换为不含 system 消息的格式。
 
         Args:
-            messages(List[ModelMessage]): The messages.
-            model_metadata(ModelMetadata): The model metadata.
+            messages(List[ModelMessage]): 消息列表。
+            model_metadata(ModelMetadata): 模型元数据。
 
         Returns:
-            List[ModelMessage]: The converted messages.
+            List[ModelMessage]: 转换后的消息列表。
         """
-        # 1. Just keep system, human and AI messages
+        # 1. 仅保留 system、human 和 AI 消息
         messages = list(filter(lambda m: m.pass_to_model, messages))
-        # 2. Move the last user's message to the end of the list
+        # 2. 将最后一条用户消息移动到列表末尾
         messages = self.move_last_user_message_to_end(messages)
 
         if not model_metadata or not model_metadata.ext_metadata:
             logger.warning("No model metadata, skip message system message conversion")
             return messages
         if not model_metadata.ext_metadata.support_system_message:
-            # 3. Convert the messages to no system message
+            # 3. 转换为不含 system 消息的格式
             return self.convert_to_no_system_message(messages, model_metadata)
         return messages
 
@@ -878,11 +869,10 @@ class DefaultMessageConverter(MessageConverter):
         messages: List[ModelMessage],
         model_metadata: Optional[ModelMetadata] = None,
     ) -> List[ModelMessage]:
-        r"""Convert the messages to no system message.
+        r"""将消息转换为不含 system 消息的格式。
 
         Examples:
-            >>> # Convert the messages to no system message, just merge system messages
-            >>> # to the last user message
+            >>> # 转换为不含 system 消息的格式，将 system 消息合并到最后一条用户消息
             >>> from typing import List
             >>> from dbgpt.core.interface.message import (
             ...     ModelMessage,
@@ -921,8 +911,7 @@ class DefaultMessageConverter(MessageConverter):
         result_messages = []
         for message in messages:
             if message.role == ModelMessageRoleType.SYSTEM:
-                # Not support system message, append system message to the last user
-                # message
+                # 不支持 system 消息，将其追加到最后一条用户消息
                 system_messages.append(message)
             elif message.role in [
                 ModelMessageRoleType.HUMAN,
@@ -938,8 +927,7 @@ class DefaultMessageConverter(MessageConverter):
             system_message_str = system_messages[0].content
 
         if system_message_str and result_messages:
-            # Not support system messages, merge system messages to the last user
-            #  message
+            # 不支持 system 消息，将 system 消息合并到最后一条用户消息
             result_messages[-1].content = (
                 system_message_str + prompt_sep + result_messages[-1].content
             )
@@ -948,7 +936,7 @@ class DefaultMessageConverter(MessageConverter):
     def move_last_user_message_to_end(
         self, messages: List[ModelMessage]
     ) -> List[ModelMessage]:
-        """Try to move the last user message to the end of the list.
+        """尝试将最后一条用户消息移动到列表末尾。
 
         Examples:
             >>> from typing import List
@@ -995,10 +983,10 @@ class DefaultMessageConverter(MessageConverter):
             ... ]
 
         Args:
-            messages(List[ModelMessage]): The messages.
+            messages(List[ModelMessage]): 消息列表。
 
         Returns:
-            List[ModelMessage]: The converted messages.
+            List[ModelMessage]: 转换后的消息列表。
         """
         last_user_input_index = None
         for i in range(len(messages) - 1, -1, -1):
@@ -1013,18 +1001,18 @@ class DefaultMessageConverter(MessageConverter):
 
 @PublicAPI(stability="beta")
 class LLMClient(ABC):
-    """An abstract class for LLM client."""
+    """大语言模型客户端的抽象基类。"""
 
-    # Cache the model metadata for 60 seconds
+    # 将模型元数据缓存 60 秒
     _MODEL_CACHE_ = TTLCache(maxsize=100, ttl=60)
 
     @property
     def cache(self) -> collections.abc.MutableMapping:
-        """Return the cache object to cache the model metadata.
+        """返回用于缓存模型元数据的缓存对象。
 
-        You can override this property to use your own cache object.
+        可以重写此属性以使用自定义缓存对象。
         Returns:
-            collections.abc.MutableMapping: The cache object.
+            collections.abc.MutableMapping: 缓存对象。
         """
         return self._MODEL_CACHE_
 
@@ -1034,18 +1022,16 @@ class LLMClient(ABC):
         request: ModelRequest,
         message_converter: Optional[MessageConverter] = None,
     ) -> ModelOutput:
-        """Generate a response for a given model request.
+        """根据给定的模型请求生成响应。
 
-        Sometimes, different LLMs may have different message formats,
-        you can use the message converter to convert the messages to the format of the
-        LLM.
+        不同大语言模型的消息格式可能不同，可以使用消息转换器将消息转换为对应模型的格式。
 
         Args:
-            request(ModelRequest): The model request.
-            message_converter(MessageConverter): The message converter.
+            request(ModelRequest): 模型请求。
+            message_converter(MessageConverter): 消息转换器。
 
         Returns:
-            ModelOutput: The model output.
+            ModelOutput: 模型输出。
 
         """
 
@@ -1055,38 +1041,36 @@ class LLMClient(ABC):
         request: ModelRequest,
         message_converter: Optional[MessageConverter] = None,
     ) -> AsyncIterator[ModelOutput]:
-        """Generate a stream of responses for a given model request.
+        """根据给定的模型请求生成响应流。
 
-        Sometimes, different LLMs may have different message formats,
-        you can use the message converter to convert the messages to the format of the
-        LLM.
+        不同大语言模型的消息格式可能不同，可以使用消息转换器将消息转换为对应模型的格式。
 
         Args:
-            request(ModelRequest): The model request.
-            message_converter(MessageConverter): The message converter.
+            request(ModelRequest): 模型请求。
+            message_converter(MessageConverter): 消息转换器。
 
         Returns:
-            AsyncIterator[ModelOutput]: The model output stream.
+            AsyncIterator[ModelOutput]: 模型输出流。
         """
 
     @abstractmethod
     async def models(self) -> List[ModelMetadata]:
-        """Get all the models.
+        """获取所有模型。
 
         Returns:
-            List[ModelMetadata]: A list of model metadata.
+            List[ModelMetadata]: 模型元数据列表。
         """
 
     @abstractmethod
     async def count_token(self, model: str, prompt: str) -> int:
-        """Count the number of tokens in a given prompt.
+        """计算给定提示词中的 token 数量。
 
         Args:
-            model(str): The model name.
-            prompt(str): The prompt.
+            model(str): 模型名称。
+            prompt(str): 提示词。
 
         Returns:
-            int: The number of tokens.
+            int: token 数量。
         """
 
     async def covert_message(
@@ -1094,16 +1078,16 @@ class LLMClient(ABC):
         request: ModelRequest,
         message_converter: Optional[MessageConverter] = None,
     ) -> ModelRequest:
-        """Covert the message.
+        """转换消息。
 
-        If no message converter is provided, the original request will be returned.
+        如果未提供消息转换器，将返回原始请求。
 
         Args:
-            request(ModelRequest): The model request.
-            message_converter(MessageConverter): The message converter.
+            request(ModelRequest): 模型请求。
+            message_converter(MessageConverter): 消息转换器。
 
         Returns:
-            ModelRequest: The converted model request.
+            ModelRequest: 转换后的模型请求。
         """
         if not message_converter:
             return request
@@ -1114,13 +1098,12 @@ class LLMClient(ABC):
         return new_request
 
     async def cached_models(self) -> List[ModelMetadata]:
-        """Get all the models from the cache or the llm server.
+        """从缓存或大语言模型服务器获取所有模型。
 
-        If the model metadata is not in the cache, it will be fetched from the
-        llm server.
+        如果缓存中没有模型元数据，将从大语言模型服务器获取。
 
         Returns:
-            List[ModelMetadata]: A list of model metadata.
+            List[ModelMetadata]: 模型元数据列表。
         """
         key = "____$llm_client_models$____"
         if key not in self.cache:
@@ -1134,16 +1117,16 @@ class LLMClient(ABC):
         return self.cache[key]
 
     async def get_model_metadata(self, model: str) -> ModelMetadata:
-        """Get the model metadata.
+        """获取模型元数据。
 
         Args:
-            model(str): The model name.
+            model(str): 模型名称。
 
         Returns:
-            ModelMetadata: The model metadata.
+            ModelMetadata: 模型元数据。
 
         Raises:
-            ValueError: If the model is not found.
+            ValueError: 找不到模型时抛出。
         """
         model_metadata_key = f"____$llm_client_models_metadata_{model}$____"
         if model_metadata_key not in self.cache:
@@ -1156,54 +1139,50 @@ class LLMClient(ABC):
     def __call__(
         self, *args, **kwargs
     ) -> Coroutine[Any, Any, ModelOutput] | ModelOutput:
-        """Return the model output.
+        """返回模型输出。
 
-        Call the LLM client to generate the response for the given message.
+        调用大语言模型客户端，根据给定消息生成响应。
 
-        Please do not use this method in the production environment, it is only used
-        for debugging.
+        请勿在生产环境中使用此方法，它仅用于调试。
         """
         import asyncio
 
         from dbgpt.util import get_or_create_event_loop
 
         try:
-            # Check if we are in an event loop
+            # 检查当前是否处于事件循环中
             loop = asyncio.get_running_loop()
-            # If we are in an event loop, use async call
+            # 如果处于事件循环中，使用异步调用
             if loop.is_running():
-                # Because we are in an async environment, but this is a sync method,
-                # we need to return a coroutine object for the caller to use await
+                # 当前处于异步环境，但这是同步方法，因此返回协程对象供调用方 await
                 return self.async_call(*args, **kwargs)
             else:
                 loop = get_or_create_event_loop()
                 return loop.run_until_complete(self.async_call(*args, **kwargs))
         except RuntimeError:
-            # If we are not in an event loop, use sync call
+            # 如果不在事件循环中，使用同步调用
             loop = get_or_create_event_loop()
             return loop.run_until_complete(self.async_call(*args, **kwargs))
 
     async def async_call(self, *args, **kwargs) -> ModelOutput:
-        """Return the model output asynchronously.
+        """异步返回模型输出。
 
-        Please do not use this method in the production environment, it is only used
-        for debugging.
+        请勿在生产环境中使用此方法，它仅用于调试。
         """
         req = self._build_call_request(*args, **kwargs)
         return await self.generate(req)
 
     async def async_call_stream(self, *args, **kwargs) -> AsyncIterator[ModelOutput]:
-        """Return the model output stream asynchronously.
+        """异步返回模型输出流。
 
-        Please do not use this method in the production environment, it is only used
-        for debugging.
+        请勿在生产环境中使用此方法，它仅用于调试。
         """
         req = self._build_call_request(*args, **kwargs)
         async for output in self.generate_stream(req):  # type: ignore
             yield output
 
     def _build_call_request(self, *args, **kwargs) -> ModelRequest:
-        """Build the model request for the call method."""
+        """为 call 方法构建模型请求。"""
         messages = kwargs.get("messages")
         model = kwargs.get("model")
 
