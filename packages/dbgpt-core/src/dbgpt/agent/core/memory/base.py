@@ -775,10 +775,10 @@ class ShortTermMemory(Memory, Generic[T]):
         """
         if len(self._fragments) > self._buffer_size:
             overflow_cnt = len(self._fragments) - self._buffer_size
-            # Just keep the most recent memories in short-term memory
-            self._fragments = self._fragments[overflow_cnt:]
             # Transfer the oldest memories to long-term memory
             overflow_fragments = self._fragments[:overflow_cnt]
+            # Just keep the most recent memories in short-term memory
+            self._fragments = self._fragments[overflow_cnt:]
             insights = await self.get_insights(overflow_fragments)
             return DiscardedMemoryFragments(overflow_fragments, insights)
         else:
